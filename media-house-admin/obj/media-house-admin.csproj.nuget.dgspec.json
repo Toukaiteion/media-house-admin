@@ -14,11 +14,15 @@
         "outputPath": "G:\\project\\MediaHouse\\media-house-admin\\media-house-admin\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
+          "G:\\project\\MediaHouse\\media-house-admin\\media-house-admin\\NuGet.Config",
           "C:\\Users\\RedMoon\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
         ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
         "frameworks": {
           "net10.0": {
             "targetAlias": "net10.0",
@@ -40,6 +44,30 @@
       "frameworks": {
         "net10.0": {
           "targetAlias": "net10.0",
+          "dependencies": {
+            "MediaInfo.Wrapper": {
+              "target": "Package",
+              "version": "[26.1.0, )"
+            },
+            "Microsoft.EntityFrameworkCore.Design": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Microsoft.EntityFrameworkCore.Sqlite": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Quartz": {
+              "target": "Package",
+              "version": "[3.14.0, )"
+            },
+            "Quartz.Extensions.Hosting": {
+              "target": "Package",
+              "version": "[3.14.0, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",
