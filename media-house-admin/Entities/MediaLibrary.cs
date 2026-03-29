@@ -23,10 +23,9 @@ public class MediaLibrary
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public bool IsEnabled { get; set; } = true;
+    public bool IsDeleted { get; set; } = false;
 
     // Navigation properties
     public ICollection<Movie> Movies { get; set; } = [];
     public ICollection<TVShow> TVShows { get; set; } = [];
-    public bool IsDeleted { get; internal set; }
-
 }

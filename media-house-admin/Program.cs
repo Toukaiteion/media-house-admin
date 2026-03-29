@@ -1,10 +1,8 @@
 using MediaHouse.Data;
 using MediaHouse.Interfaces;
 using MediaHouse.Services;
-using MediaHouse.BackgroundJobs;
 using Microsoft.EntityFrameworkCore;
 using Quartz;
-using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,12 +19,19 @@ builder.Services.AddScoped<IPlaybackService, PlaybackService>();
 builder.Services.AddScoped<IMediaFileService, MediaFileService>();
 builder.Services.AddScoped<DatabaseService>();
 
+// Register repositories
+builder.Services.AddScoped<IMediaLibraryRepository, MediaLibraryRepository>();
+builder.Services.AddScoped<IMovieRepository, MovieRepository>();
+builder.Services.AddScoped<ITVShowRepository, TVShowRepository>();
+builder.Services.AddScoped<ISeasonRepository, SeasonRepository>();
+builder.Services.AddScoped<IEpisodeRepository, EpisodeRepository>();
+builder.Services.AddScoped<IAppUserRepository, AppUserRepository>();
+builder.Services.AddScoped<IPlayRecordRepository, PlayRecordRepository>();
+
 // Add Quartz.NET
 builder.Services.AddQuartz(q =>
 {
     // Default job factory
-    q.UseMicrosoftDependencyInjectionJobFactory();
-
     // Configure jobs if needed
 });
 

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build:*)",
+      "Bash(/usr/share/dotnet/dotnet --version)",
+      "Bash(/usr/local/bin/dotnet --version)"
+    ]
+  }
+}

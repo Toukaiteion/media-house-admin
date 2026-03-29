@@ -13,7 +13,12 @@ public class MediaHouseDbContext : DbContext
     public DbSet<MediaFile> MediaFiles { get; set; }
     public DbSet<NfoMetadata> NfoMetadata { get; set; }
     public DbSet<SystemSyncLog> SystemSyncLogs { get; set; }
-    public DbSet<PlaybackProgress> PlaybackProgresses { get; set; }
+    public DbSet<PlayRecord> PlayRecords { get; set; }
+    public DbSet<AppUser> AppUsers { get; set; }
+    public DbSet<Staff> Staffs { get; set; }
+    public DbSet<MediaTag> MediaTags { get; set; }
+    public DbSet<MyFavor> MyFavors { get; set; }
+    public DbSet<MediaStaff> MediaStaffs { get; set; }
 
     public MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options)
         : base(options)
@@ -22,7 +27,7 @@ public class MediaHouseDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // MediaLibrary
+        // MediaLibrary relationships
         modelBuilder.Entity<MediaLibrary>()
             .HasMany(m => m.Movies)
             .WithOne(m => m.MediaLibrary)
@@ -45,14 +50,21 @@ public class MediaHouseDbContext : DbContext
             .WithOne(e => e.Season)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Movie -> MediaFile (one-to-one)
+        // Episode -> TVShow (for navigation)
+        modelBuilder.Entity<Episode>()
+            .HasOne(e => e.TVShow)
+            .WithMany()
+            .HasForeignKey(e => e.TVShowId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Movie -> MediaFile (one-to-one via MovieId - legacy)
         modelBuilder.Entity<Movie>()
             .HasOne(m => m.MediaFile)
             .WithOne()
             .HasForeignKey<MediaFile>(mf => mf.MovieId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Episode -> MediaFile (one-to-one)
+        // Episode -> MediaFile (one-to-one via EpisodeId - legacy)
         modelBuilder.Entity<Episode>()
             .HasOne(e => e.MediaFile)
             .WithOne()
@@ -80,35 +92,78 @@ public class MediaHouseDbContext : DbContext
             .HasForeignKey<NfoMetadata>(nm => nm.EpisodeId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // SystemSyncLog
+        // SystemSyncLog -> MediaLibrary
         modelBuilder.Entity<SystemSyncLog>()
             .HasOne(sl => sl.MediaLibrary)
             .WithMany()
             .OnDelete(DeleteBehavior.Cascade);
 
-        // PlaybackProgress
-        modelBuilder.Entity<PlaybackProgress>()
+        // PlayRecord -> Movie (optional)
+        modelBuilder.Entity<PlayRecord>()
             .HasOne(p => p.Movie)
             .WithMany()
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<PlaybackProgress>()
+        // PlayRecord -> Episode (optional)
+        modelBuilder.Entity<PlayRecord>()
             .HasOne(p => p.Episode)
             .WithMany()
             .OnDelete(DeleteBehavior.Cascade);
 
+        // AppUser relationships
+        modelBuilder.Entity<AppUser>()
+            .HasMany(u => u.Favorites)
+            .WithOne(f => f.User)
+            .HasForeignKey(f => f.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AppUser>()
+            .HasMany(u => u.PlayRecords)
+            .WithOne()
+            .HasForeignKey(p => p.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // MyFavor -> MediaLibrary
+        modelBuilder.Entity<MyFavor>()
+            .HasOne(f => f.MediaLibrary)
+            .WithMany()
+            .HasForeignKey(f => f.MediaLibraryId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // MediaTag -> MediaLibrary
+        modelBuilder.Entity<MediaTag>()
+            .HasOne(t => t.MediaLibrary)
+            .WithMany()
+            .HasForeignKey(t => t.MediaLibraryId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // MediaStaff -> Staff
+        modelBuilder.Entity<MediaStaff>()
+            .HasOne(ms => ms.Staff)
+            .WithMany(s => s.MediaStaffs)
+            .HasForeignKey(ms => ms.StaffId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Indexes for performance
         modelBuilder.Entity<MediaFile>()
-            .HasIndex(mf => mf.FilePath)
+            .HasIndex(mf => mf.Path)
             .IsUnique();
 
-        modelBuilder.Entity<PlaybackProgress>()
-            .HasIndex(p => new { p.UserId, p.MovieId });
+        modelBuilder.Entity<PlayRecord>()
+            .HasIndex(p => new { p.UserId, p.MediaType, p.MediaId });
 
-        modelBuilder.Entity<PlaybackProgress>()
-            .HasIndex(p => new { p.UserId, p.EpisodeId });
+        modelBuilder.Entity<PlayRecord>()
+            .HasIndex(p => p.LastPlayTime);
 
-        // Enum conversion
+        modelBuilder.Entity<AppUser>()
+            .HasIndex(u => u.Username)
+            .IsUnique();
+
+        modelBuilder.Entity<MediaTag>()
+            .HasIndex(t => new { t.MediaLibraryId, t.TagName })
+            .IsUnique();
+
+        // Enum conversions
         modelBuilder.Entity<MediaLibrary>()
             .Property(m => m.Type)
             .HasConversion<string>();
@@ -123,6 +178,30 @@ public class MediaHouseDbContext : DbContext
 
         modelBuilder.Entity<SystemSyncLog>()
             .Property(s => s.Status)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<MediaFile>()
+            .Property(mf => mf.MediaType)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<PlayRecord>()
+            .Property(p => p.MediaType)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<MediaTag>()
+            .Property(t => t.MediaType)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<MediaStaff>()
+            .Property(ms => ms.MediaType)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<MediaStaff>()
+            .Property(ms => ms.RoleType)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<Staff>()
+            .Property(s => s.Country)
             .HasConversion<string>();
     }
 }
