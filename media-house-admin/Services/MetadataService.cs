@@ -1,6 +1,5 @@
 using MediaHouse.Entities;
 using MediaHouse.Interfaces;
-using Microsoft.Extensions.Logging;
 
 namespace MediaHouse.Services;
 

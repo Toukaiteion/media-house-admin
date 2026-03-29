@@ -1,8 +1,7 @@
 using MediaHouse.Entities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
-namespace MediaHouse.Data;
+namespace MediaHouse.Data.repository;
 
 public class PlayRecordRepository(MediaHouseDbContext context, ILogger<PlayRecordRepository> logger)
     : Repository<PlayRecord>(context, logger), Interfaces.IPlayRecordRepository

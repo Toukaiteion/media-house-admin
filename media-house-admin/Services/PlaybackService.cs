@@ -2,37 +2,30 @@ using MediaHouse.Entities;
 using MediaHouse.Interfaces;
 using MediaHouse.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace MediaHouse.Services;
 
-public class PlaybackService : IPlaybackService
+public class PlayRecordService(MediaHouseDbContext context, ILogger<PlayRecordService> logger) : IPlayRecordService
 {
-    private readonly MediaHouseDbContext _context;
-    private readonly ILogger<PlaybackService> _logger;
-
-    public PlaybackService(MediaHouseDbContext context, ILogger<PlaybackService> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
+    private readonly MediaHouseDbContext _context = context;
+    private readonly ILogger<PlayRecordService> _logger = logger;
 
     public async Task<string> GetPlaybackUrlAsync(string mediaId, string mediaType)
     {
         string? filePath = null;
 
-        if (mediaType.ToLower() == "movie")
+        if (mediaType.Equals("movie", StringComparison.CurrentCultureIgnoreCase))
         {
             var movie = await _context.Movies
                 .Include(m => m.MediaFile)
-                .FirstOrDefaultFirstOrDefaultAsync(m => m.Id == mediaId);
+                .FirstOrDefaultAsync(m => m.Id == mediaId);
             filePath = movie?.MediaFile?.Path;
         }
-        else if (mediaType.ToLower() == "episode")
+        else if (mediaType.Equals("episode", StringComparison.CurrentCultureIgnoreCase))
         {
             var episode = await _context.Episodes
                 .Include(e => e.MediaFile)
-                .FirstOrDefaultAsync(e => => e.Id == mediaId);
+                .FirstOrDefaultAsync(e => e.Id == mediaId);
             filePath = episode?.MediaFile?.Path;
         }
 

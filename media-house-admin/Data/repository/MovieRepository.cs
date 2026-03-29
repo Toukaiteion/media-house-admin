@@ -1,8 +1,7 @@
 using MediaHouse.Entities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
-namespace MediaHouse.Data;
+namespace MediaHouse.Data.repository;
 
 public class MovieRepository(MediaHouseDbContext context, ILogger<MovieRepository> logger)
     : Repository<Movie>(context, logger), Interfaces.IMovieRepository

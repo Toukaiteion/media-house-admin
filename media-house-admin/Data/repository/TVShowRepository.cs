@@ -1,8 +1,7 @@
 using MediaHouse.Entities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
-namespace MediaHouse.Data;
+namespace MediaHouse.Data.repository;
 
 public class TVShowRepository(MediaHouseDbContext context, ILogger<TVShowRepository> logger)
     : Repository<TVShow>(context, logger), Interfaces.ITVShowRepository

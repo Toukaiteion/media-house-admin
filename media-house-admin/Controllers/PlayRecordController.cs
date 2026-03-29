@@ -9,14 +9,14 @@ namespace MediaHouse.Controllers;
 [Route("api/[controller]")]
 public class PlayRecordController : ControllerBase
 {
-    private readonly IPlaybackService _playbackService;
+    private readonly IPlayRecordService _playRecordService;
     private readonly ILogger<PlayRecordController> _logger;
 
     public PlayRecordController(
-        IPlaybackService playbackService,
+        IPlayRecordService playRecordService,
         ILogger<PlayRecordController> logger)
     {
-        _playbackService = playbackService;
+        _playRecordService = playRecordService;
         _logger = logger;
     }
 
@@ -25,7 +25,7 @@ public class PlayRecordController : ControllerBase
     {
         try
         {
-            var url = await _playbackService.GetPlaybackUrlAsync(mediaId, mediaType);
+            var url = await _playRecordService.GetPlaybackUrlAsync(mediaId, mediaType);
             return Ok(new PlaybackUrlDto
             {
                 Url = url,
@@ -49,7 +49,7 @@ public class PlayRecordController : ControllerBase
     {
         try
         {
-            var progress = await _playbackService.GetPlaybackProgressAsync(userId, mediaLibraryId, mediaType, mediaId);
+            var progress = await _playRecordService.GetPlaybackProgressAsync(userId, mediaLibraryId, mediaType, mediaId);
             if (progress == null)
             {
                 return NotFound(new { error = "No playback progress found" });
@@ -69,7 +69,7 @@ public class PlayRecordController : ControllerBase
     {
         try
         {
-            await _playbackService.UpdatePlaybackProgressAsync(dto.UserId, dto.MediaLibraryId, dto.MediaType, dto.MediaId, dto.PositionSeconds);
+            await _playRecordService.UpdatePlaybackProgressAsync(dto.UserId, dto.MediaLibraryId, dto.MediaType, dto.MediaId, dto.PositionSeconds);
             return Ok(new { message = "Progress updated" });
         }
         catch (Exception ex)
@@ -84,7 +84,7 @@ public class PlayRecordController : ControllerBase
     {
         try
         {
-            await _playbackService.MarkAsCompletedAsync(dto.UserId, dto.MediaLibraryId, dto.MediaType, dto.MediaId);
+            await _playRecordService.MarkAsCompletedAsync(dto.UserId, dto.MediaLibraryId, dto.MediaType, dto.MediaId);
             return Ok(new { message = "Playback marked as completed" });
         }
         catch (Exception ex)

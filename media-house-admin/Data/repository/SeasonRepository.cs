@@ -1,8 +1,7 @@
 using MediaHouse.Entities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
-namespace MediaHouse.Data;
+namespace MediaHouse.Data.repository;
 
 public class SeasonRepository(MediaHouseDbContext context, ILogger<SeasonRepository> logger)
     : Repository<Season>(context, logger), Interfaces.ISeasonRepository

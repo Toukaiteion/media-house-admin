@@ -2,7 +2,6 @@ using MediaHouse.Entities;
 using MediaHouse.Interfaces;
 using MediaHouse.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Extensions.Logging;
 
 namespace MediaHouse.Services;
 

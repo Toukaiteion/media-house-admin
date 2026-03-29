@@ -1,8 +1,7 @@
 using MediaHouse.Entities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
-namespace MediaHouse.Data;
+namespace MediaHouse.Data.repository;
 
 public class AppUserRepository(MediaHouseDbContext context, ILogger<AppUserRepository> logger)
     : Repository<AppUser>(context, logger), Interfaces.IAppUserRepository

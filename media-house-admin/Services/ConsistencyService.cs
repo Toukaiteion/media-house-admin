@@ -1,5 +1,4 @@
 using MediaHouse.Interfaces;
-using Microsoft.Extensions.Logging;
 
 namespace MediaHouse.Services;
 
@@ -27,6 +26,6 @@ public class ConsistencyService : IConsistencyService
     public async Task<List<string>> GetInconsistencyReportAsync()
     {
         // TODO: Implement inconsistency reporting
-        return new List<string>();
+        return [];
     }
 }

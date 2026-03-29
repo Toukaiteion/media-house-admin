@@ -1,8 +1,7 @@
 using MediaHouse.Entities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
-namespace MediaHouse.Data;
+namespace MediaHouse.Data.repository;
 
 public class EpisodeRepository(MediaHouseDbContext context, ILogger<EpisodeRepository> logger)
     : Repository<Episode>(context, logger), Interfaces.IEpisodeRepository
@@ -23,7 +22,7 @@ public class EpisodeRepository(MediaHouseDbContext context, ILogger<EpisodeRepos
             .Include(e => e.Season)
             .Include(e => e.MediaFile)
             .Where(e => e.TVShowId == tvShowId && !e.IsDeleted)
-            .OrderBy(e => e.SeasonNumber)
+            .OrderBy(e => e.Season.SeasonNumber)
             .ThenBy(e => e.EpisodeNumber)
             .ToListAsync();
     }

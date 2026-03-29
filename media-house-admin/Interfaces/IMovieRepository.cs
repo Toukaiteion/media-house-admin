@@ -2,7 +2,7 @@ using MediaHouse.Entities;
 
 namespace MediaHouse.Interfaces;
 
-public interface IMovieRepository : : IRepository<Movie>
+public interface IMovieRepository : IRepository<Movie>
 {
     Task<List<Movie>> GetByLibraryAsync(string libraryId);
     Task<Movie?> GetByTitleAsync(string title);

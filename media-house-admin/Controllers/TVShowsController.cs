@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using MediaHouse.DTOs;
-using MediaHouse.Interfaces;
 
 namespace MediaHouse.Controllers;
 
