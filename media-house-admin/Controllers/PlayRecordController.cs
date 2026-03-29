@@ -7,21 +7,21 @@ namespace MediaHouse.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class PlaybackController : ControllerBase
+public class PlayRecordController : ControllerBase
 {
     private readonly IPlaybackService _playbackService;
-    private readonly ILogger<PlaybackController> _logger;
+    private readonly ILogger<PlayRecordController> _logger;
 
-    public PlaybackController(
+    public PlayRecordController(
         IPlaybackService playbackService,
-        ILogger<PlaybackController> logger)
+        ILogger<PlayRecordController> logger)
     {
         _playbackService = playbackService;
         _logger = logger;
     }
 
     [HttpGet("url")]
-    public async Task<ActionResult<PlaybackUrlDto>> GetPlaybackUrl([FromQuery] int mediaId, [FromQuery] string mediaType)
+    public async Task<ActionResult<PlaybackUrlDto>> GetPlaybackUrl([FromQuery] string mediaId, [FromQuery] string mediaType)
     {
         try
         {
@@ -41,16 +41,15 @@ public class PlaybackController : ControllerBase
     }
 
     [HttpGet("progress")]
-    public async Task<ActionResult<PlaybackProgressDto>> GetPlaybackProgress([FromQuery] string userId = "default", [FromQuery] int? movieId = null, [FromQuery] int? episodeId = null)
+    public async Task<ActionResult<PlayRecordDto>> GetPlaybackProgress(
+        [FromQuery] string userId,
+        [FromQuery] string mediaLibraryId,
+        [FromQuery] MediaType mediaType,
+        [FromQuery] string mediaId)
     {
         try
         {
-            if (!movieId.HasValue && !episodeId.HasValue)
-            {
-                return BadRequest(new { error = "Either movieId or episodeId must be provided" });
-            }
-
-            var progress = await _playbackService.GetPlaybackProgressAsync(userId, movieId, episodeId);
+            var progress = await _playbackService.GetPlaybackProgressAsync(userId, mediaLibraryId, mediaType, mediaId);
             if (progress == null)
             {
                 return NotFound(new { error = "No playback progress found" });
@@ -66,17 +65,32 @@ public class PlaybackController : ControllerBase
     }
 
     [HttpPost("progress")]
-    public async Task<ActionResult> UpdatePlaybackProgress([FromBody] UpdatePlaybackProgressDto dto, [FromQuery] string userId = "default")
+    public async Task<ActionResult> UpdatePlaybackProgress([FromBody] UpdatePlayRecordDto dto)
     {
         try
         {
-            await _playbackService.UpdatePlaybackProgressAsync(userId, dto.MovieId, dto.EpisodeId, dto.Position, dto.Duration);
+            await _playbackService.UpdatePlaybackProgressAsync(dto.UserId, dto.MediaLibraryId, dto.MediaType, dto.MediaId, dto.PositionSeconds);
             return Ok(new { message = "Progress updated" });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating playback progress");
             return StatusCode(500, new { error = "Failed to update progress" });
+        }
+    }
+
+    [HttpPut("progress/complete")]
+    public async Task<ActionResult> MarkAsCompleted([FromBody] UpdatePlayRecordDto dto)
+    {
+        try
+        {
+            await _playbackService.MarkAsCompletedAsync(dto.UserId, dto.MediaLibraryId, dto.MediaType, dto.MediaId);
+            return Ok(new { message = "Playback marked as completed" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error marking playback as completed");
+            return StatusCode(500, new { error = "Failed to mark as completed" });
         }
     }
 
@@ -89,18 +103,20 @@ public class PlaybackController : ControllerBase
         };
     }
 
-    private static PlaybackProgressDto MapToDto(PlaybackProgress progress)
+    private static PlayRecordDto MapToDto(PlayRecord progress)
     {
-        return new PlaybackProgressDto
+        return new PlayRecordDto
         {
             Id = progress.Id,
             UserId = progress.UserId,
-            MovieId = progress.MovieId,
-            EpisodeId = progress.EpisodeId,
-            Position = progress.Position,
-            Duration = progress.Duration,
-            LastPlayed = progress.LastPlayed,
-            IsCompleted = progress.IsCompleted
+            MediaLibraryId = progress.MediaLibraryId,
+            MediaType = progress.MediaType,
+            MediaId = progress.MediaId,
+            PositionMs = progress.PositionMs,
+            IsFinished = progress.IsFinished,
+            LastPlayTime = progress.LastPlayTime,
+            CreatedAt = progress.CreatedAt,
+            UpdatedAt = progress.UpdatedAt
         };
     }
 }

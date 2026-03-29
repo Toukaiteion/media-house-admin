@@ -4,14 +4,10 @@ using Microsoft.Extensions.Logging;
 
 namespace MediaHouse.Data;
 
-public class MovieRepository : Repository<Movie>, Interfaces.IMovieRepository
+public class MovieRepository(MediaHouseDbContext context, ILogger<MovieRepository> logger)
+    : Repository<Movie>(context, logger), Interfaces.IMovieRepository
 {
-    public MovieRepository(MediaHouseDbContext context, ILogger<MovieRepository> logger)
-        : base(context, logger)
-    {
-    }
-
-    public async Task<List<Movie>> GetByLibraryAsync(int libraryId)
+    public async Task<List<Movie>> GetByLibraryAsync(string libraryId)
     {
         return await _dbSet
             .Include(m => m.MediaFile)

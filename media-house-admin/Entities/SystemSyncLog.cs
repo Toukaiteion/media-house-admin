@@ -18,8 +18,8 @@ public enum SyncStatus
 
 public class SystemSyncLog
 {
-    public int Id { get; set; }
-    public int MediaLibraryId { get; set; }
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string MediaLibraryId { get; set; } = string.Empty;
     public SyncType SyncType { get; set; }
     public SyncStatus Status { get; set; }
     public int AddedCount { get; set; }

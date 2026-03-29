@@ -2,8 +2,8 @@ namespace MediaHouse.Entities;
 
 public class TVShow
 {
-    public int Id { get; set; }
-    public int MediaLibraryId { get; set; }
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string MediaLibraryId { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string? OriginalTitle { get; set; }
     public string? Overview { get; set; }

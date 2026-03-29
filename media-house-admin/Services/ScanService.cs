@@ -2,7 +2,7 @@ using MediaHouse.Entities;
 using MediaHouse.Interfaces;
 using MediaHouse.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Extensions.Logging;
 
 namespace MediaHouse.Services;
 
@@ -17,7 +17,7 @@ public class ScanService : IScanService
         _logger = logger;
     }
 
-    public async Task<SystemSyncLog> StartFullScanAsync(int libraryId)
+    public async Task<SystemSyncLog> StartFullScanAsync(string libraryId)
     {
         var library = await _context.MediaLibraries.FindAsync(libraryId);
         if (library == null)
@@ -61,7 +61,7 @@ public class ScanService : IScanService
         return log;
     }
 
-    public async Task<SystemSyncLog> StartIncrementalScanAsync(int libraryId)
+    public async Task<SystemSyncLog> StartIncrementalScanAsync(string libraryId)
     {
         var library = await _context.MediaLibraries.FindAsync(libraryId);
         if (library == null)
@@ -103,7 +103,7 @@ public class ScanService : IScanService
         return log;
     }
 
-    public async Task<SystemSyncLog?> GetLatestScanLogAsync(int libraryId)
+    public async Task<SystemSyncLog?> GetLatestScanLogAsync(string libraryId)
     {
         return await _context.SystemSyncLogs
             .Where(sl => sl.MediaLibraryId == libraryId)
@@ -111,7 +111,7 @@ public class ScanService : IScanService
             .FirstOrDefaultAsync();
     }
 
-    public async Task<List<SystemSyncLog>> GetScanLogsAsync(int libraryId, int limit = 10)
+    public async Task<List<SystemSyncLog>> GetScanLogsAsync(string libraryId, int limit = 10)
     {
         return await _context.SystemSyncLogs
             .Where(sl => sl.MediaLibraryId == libraryId)

@@ -1,19 +1,11 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using MediaHouse.Data;
 
 namespace MediaHouse.Data;
 
-public class DatabaseService
+public class DatabaseService(MediaHouseDbContext context, ILogger<DatabaseService> logger)
 {
-    private readonly MediaHouseDbContext _context;
-    private readonly ILogger<DatabaseService> _logger;
-
-    public DatabaseService(MediaHouseDbContext context, ILogger<DatabaseService> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
+    private readonly MediaHouseDbContext _context = context;
+    private readonly ILogger<DatabaseService> _logger = logger;
 
     public async Task InitializeDatabaseAsync()
     {

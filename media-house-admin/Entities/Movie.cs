@@ -2,8 +2,8 @@ namespace MediaHouse.Entities;
 
 public class Movie
 {
-    public int Id { get; set; }
-    public int MediaLibraryId { get; set; }
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string MediaLibraryId { get; set; } = string.Empty;
     public int? Num { get; set; }                           // 编号/排序号
     public string Title { get; set; } = string.Empty;        // 标题
     public string? OriginalTitle { get; set; }                // 原始标题

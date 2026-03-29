@@ -37,7 +37,7 @@ public class MetadataService : IMetadataService
         }
     }
 
-    public async Task<NfoMetadata?> GetMetadataAsync(int movieId = 0, int tvShowId = 0, int episodeId = 0)
+    public async Task<NfoMetadata?> GetMetadataAsync(string movieId = "", string tvShowId = "", string episodeId = "")
     {
         // TODO: Implement with proper database queries
         return null;

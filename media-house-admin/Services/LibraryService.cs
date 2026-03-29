@@ -24,7 +24,7 @@ public class LibraryService : ILibraryService
             .ToListAsync();
     }
 
-    public async Task<MediaLibrary?> GetLibraryByIdAsync(int id)
+    public async Task<MediaLibrary?> GetLibraryByIdAsync(string id)
     {
         return await _context.MediaLibraries
             .Include(l => l.Movies)
@@ -51,7 +51,7 @@ public class LibraryService : ILibraryService
         return library;
     }
 
-    public async Task<MediaLibrary?> UpdateLibraryAsync(int id, string name, LibraryType type, string path, bool isEnabled)
+    public async Task<MediaLibrary?> UpdateLibraryAsync(string id, string name, LibraryType type, string path, bool isEnabled)
     {
         var library = await _context.MediaLibraries.FindAsync(id);
         if (library == null) return null;
@@ -67,7 +67,7 @@ public class LibraryService : ILibraryService
         return library;
     }
 
-    public async Task<bool> DeleteLibraryAsync(int id)
+    public async Task<bool> DeleteLibraryAsync(string id)
     {
         var library = await _context.MediaLibraries.FindAsync(id);
         if (library == null) return false;
@@ -78,7 +78,7 @@ public class LibraryService : ILibraryService
         return true;
     }
 
-    public async Task<bool> TriggerScanAsync(int id)
+    public async Task<bool> TriggerScanAsync(string id)
     {
         var library = await _context.MediaLibraries.FindAsync(id);
         if (library == null) return false;

@@ -11,7 +11,7 @@ public class QuartzService : IHostedService
 {
     private readonly IScheduler _scheduler;
     private readonly ILogger<QuartzService> _logger;
-    private readonly ConcurrentDictionary<int, string> _scheduledJobs = new();
+    private readonly ConcurrentDictionary<string, string> _scheduledJobs = new();
 
     public QuartzService(IScheduler scheduler, ILogger<QuartzService> logger)
     {
@@ -33,7 +33,7 @@ public class QuartzService : IHostedService
         _logger.LogInformation("Quartz scheduler shutdown complete");
     }
 
-    public async Task ScheduleIncrementalScan(int libraryId, int intervalMinutes)
+    public async Task ScheduleIncrementalScan(string libraryId, int intervalMinutes)
     {
         var jobKey = new JobKey($"IncrementalScan_{libraryId}", "LibraryScans");
 
@@ -58,7 +58,7 @@ public class QuartzService : IHostedService
         _logger.LogInformation("Scheduled incremental scan for library {LibraryId} every {Interval} minutes", libraryId, intervalMinutes);
     }
 
-    public async Task UnscheduleIncrementalScan(int libraryId)
+    public async Task UnscheduleIncrementalScan(string libraryId)
     {
         if (_scheduledJobs.TryGetValue(libraryId, out var jobName))
         {

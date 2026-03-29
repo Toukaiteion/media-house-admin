@@ -20,15 +20,15 @@ public class MediaFileService : IMediaFileService
     public async Task<MediaFile?> GetMediaFileByPathAsync(string path)
     {
         return await _context.MediaFiles
-            .FirstOrDefaultAsync(mf => mf.FilePath == path);
+            .FirstOrDefaultAsync(mf => mf.Path == path);
     }
 
-    public async Task<MediaFile?> GetMediaFileByIdAsync(int id)
+    public async Task<MediaFile?> GetMediaFileByIdAsync(string id)
     {
         return await _context.MediaFiles.FindAsync(id);
     }
 
-    public async Task<MediaFile> CreateMediaFileAsync(string filePath, int? movieId = null, int? episodeId = null)
+    public async Task<MediaFile> CreateMediaFileAsync(string filePath, string? movieId = null, string? episodeId = null)
     {
         if (!File.Exists(filePath))
             throw new FileNotFoundException($"File not found: {filePath}");
@@ -38,15 +38,15 @@ public class MediaFileService : IMediaFileService
         var mediaFile = new MediaFile
         {
             FileName = fileInfo.Name,
-            FilePath = filePath,
-            ContainerFormat = fileInfo.Extension.TrimStart('.'),
-            FileSize = fileInfo.Length,
-            LastModified = fileInfo.LastWriteTimeUtc,
+            Path = filePath,
+            Extension = fileInfo.Extension,
+            SizeBytes = fileInfo.Length,
             MovieId = movieId,
             EpisodeId = episodeId
         };
 
         // TODO: Extract media info using MediaInfo or FFmpeg
+        // TODO: Set MediaType based on movieId vs episodeId
 
         _context.MediaFiles.Add(mediaFile);
         await _context.SaveChangesAsync();
@@ -54,21 +54,20 @@ public class MediaFileService : IMediaFileService
         return mediaFile;
     }
 
-    public async Task<MediaFile?> UpdateMediaFileAsync(int id, MediaFile updatedFile)
+    public async Task<MediaFile?> UpdateMediaFileAsync(string id, MediaFile updatedFile)
     {
         var mediaFile = await _context.MediaFiles.FindAsync(id);
         if (mediaFile == null) return null;
 
         mediaFile.FileName = updatedFile.FileName;
-        mediaFile.FilePath = updatedFile.FilePath;
-        mediaFile.ContainerFormat = updatedFile.ContainerFormat;
+        mediaFile.Path = updatedFile.Path;
+        mediaFile.Extension = updatedFile.Extension;
+        mediaFile.Container = updatedFile.Container;
         mediaFile.VideoCodec = updatedFile.VideoCodec;
         mediaFile.AudioCodec = updatedFile.AudioCodec;
         mediaFile.Width = updatedFile.Width;
         mediaFile.Height = updatedFile.Height;
-        mediaFile.Duration = updatedFile.Duration;
-        mediaFile.FileSize = updatedFile.FileSize;
-        mediaFile.LastModified = updatedFile.LastModified;
+        mediaFile.SizeBytes = updatedFile.SizeBytes;
         mediaFile.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
@@ -76,7 +75,7 @@ public class MediaFileService : IMediaFileService
         return mediaFile;
     }
 
-    public async Task<bool> DeleteMediaFileAsync(int id)
+    public async Task<bool> DeleteMediaFileAsync(string id)
     {
         var mediaFile = await _context.MediaFiles.FindAsync(id);
         if (mediaFile == null) return false;
@@ -87,9 +86,9 @@ public class MediaFileService : IMediaFileService
         return true;
     }
 
-    public async Task<List<MediaFile>> GetMediaFilesForLibraryAsync(int libraryId)
+    public async Task<List<MediaFile>> GetMediaFilesForLibraryAsync(string libraryId)
     {
-        // TODO: Implement proper query
+        // TODO: Implement proper query to get media files by library
         return await _context.MediaFiles.ToListAsync();
     }
 }

@@ -4,8 +4,8 @@ namespace MediaHouse.Interfaces;
 
 public interface IScanService
 {
-    Task<SystemSyncLog> StartFullScanAsync(int libraryId);
-    Task<SystemSyncLog> StartIncrementalScanAsync(int libraryId);
-    Task<SystemSyncLog?> GetLatestScanLogAsync(int libraryId);
-    Task<List<SystemSyncLog>> GetScanLogsAsync(int libraryId, int limit = 10);
+    Task<SystemSyncLog> StartFullScanAsync(string libraryId);
+    Task<SystemSyncLog> StartIncrementalScanAsync(string libraryId);
+    Task<SystemSyncLog?> GetLatestScanLogAsync(string libraryId);
+    Task<List<SystemSyncLog>> GetScanLogsAsync(string libraryId, int limit = 10);
 }

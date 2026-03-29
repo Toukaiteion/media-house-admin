@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using MediaHouse.Entities;
 using MediaHouse.Interfaces;
 using MediaHouse.DTOs;
@@ -42,7 +41,7 @@ public class LibrariesController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<MediaLibraryDto>> GetLibrary(int id)
+    public async Task<ActionResult<MediaLibraryDto>> GetLibrary(string id)
     {
         try
         {
@@ -81,7 +80,7 @@ public class LibrariesController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<MediaLibraryDto>> UpdateLibrary(int id, [FromBody] UpdateMediaLibraryDto dto)
+    public async Task<ActionResult<MediaLibraryDto>> UpdateLibrary(string id, [FromBody] UpdateMediaLibraryDto dto)
     {
         try
         {
@@ -105,7 +104,7 @@ public class LibrariesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public async Task<ActionResult> DeleteLibrary(int id)
+    public async Task<ActionResult> DeleteLibrary(string id)
     {
         try
         {
@@ -124,7 +123,7 @@ public class LibrariesController : ControllerBase
     }
 
     [HttpPost("{id}/scan")]
-    public async Task<ActionResult> TriggerScan(int id, [FromQuery] string scanType = "full")
+    public async Task<ActionResult> TriggerScan(string id, [FromQuery] string scanType = "full")
     {
         try
         {
@@ -153,7 +152,7 @@ public class LibrariesController : ControllerBase
     }
 
     [HttpGet("{id}/scan-logs")]
-    public async Task<ActionResult<List<ScanLogDto>>> GetScanLogs(int id, [FromQuery] int limit = 10)
+    public async Task<ActionResult<List<ScanLogDto>>> GetScanLogs(string id, [FromQuery] int limit = 10)
     {
         try
         {

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using MediaHouse.DTOs;
 using MediaHouse.Interfaces;
-using Microsoft.AspNetCore.Mvc;
 
 namespace MediaHouse.Controllers;
 
@@ -17,28 +16,28 @@ public class TVShowsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<TVShowDto>>> GetTVShows([FromQuery] int? libraryId = null)
+    public async Task<ActionResult<List<TVShowDto>>> GetTVShows([FromQuery] string? libraryId = null)
     {
         // TODO: Implement with proper service
         return Ok(new List<TVShowDto>());
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<TVShowDto>> GetTVShow(int id)
+    public async Task<ActionResult<TVShowDto>> GetTVShow(string id)
     {
         // TODO: Implement with proper service
         return NotFound();
     }
 
     [HttpGet("{id}/seasons")]
-    public async Task<ActionResult<List<SeasonDto>>> GetSeasons(int id)
+    public async Task<ActionResult<List<SeasonDto>>> GetSeasons(string id)
     {
         // TODO: Implement with proper service
         return Ok(new List<SeasonDto>());
     }
 
     [HttpGet("{tvShowId}/seasons/{seasonId}/episodes")]
-    public async Task<ActionResult<List<EpisodeDto>>> GetEpisodes(int tvShowId, int seasonId)
+    public async Task<ActionResult<List<EpisodeDto>>> GetEpisodes(string tvShowId, string seasonId)
     {
         // TODO: Implement with proper service
         return Ok(new List<EpisodeDto>());

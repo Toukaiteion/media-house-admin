@@ -21,7 +21,7 @@ public class ScanJob : IJob
 
         try
         {
-            var libraryId = context.JobDetail.JobDataMap.GetIntValue("LibraryId");
+            var libraryId = context.JobDetail.JobDataMap.GetStringValue("LibraryId");
             await _scanService.StartIncrementalScanAsync(libraryId);
 
             _logger.LogInformation("Incremental scan job completed for library {LibraryId}", libraryId);

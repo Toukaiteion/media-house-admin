@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using MediaHouse.Entities;
 using MediaHouse.DTOs;
 using MediaHouse.Interfaces;
 
@@ -21,14 +20,14 @@ public class MoviesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<MovieDto>>> GetMovies([FromQuery] int? libraryId = null)
+    public async Task<ActionResult<List<MovieDto>>> GetMovies([FromQuery] string? libraryId = null)
     {
         // TODO: Implement with proper service
         return Ok(new List<MovieDto>());
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<MovieDto>> GetMovie(int id)
+    public async Task<ActionResult<MovieDto>> GetMovie(string id)
     {
         // TODO: Implement with proper service
         return NotFound();

@@ -2,11 +2,11 @@ namespace MediaHouse.Entities;
 
 public class MyFavor
 {
-    public int Id { get; set; }
-    public int UserId { get; set; }
-    public int MediaLibraryId { get; set; }
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public string UserId { get; set; } = string.Empty;
+    public string MediaLibraryId { get; set; } = string.Empty;
     public MediaType MediaType { get; set; }          // movie / tv
-    public int MediaId { get; set; }                 // movies id / tv_shows id
+    public string MediaId { get; set; } = string.Empty;                 // movies id / tv_shows id
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties

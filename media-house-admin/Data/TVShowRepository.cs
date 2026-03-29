@@ -4,14 +4,10 @@ using Microsoft.Extensions.Logging;
 
 namespace MediaHouse.Data;
 
-public class TVShowRepository : Repository<TVShow>, Interfaces.ITVShowRepository
+public class TVShowRepository(MediaHouseDbContext context, ILogger<TVShowRepository> logger)
+    : Repository<TVShow>(context, logger), Interfaces.ITVShowRepository
 {
-    public TVShowRepository(MediaHouseDbContext context, ILogger<TVShowRepository> logger)
-        : base(context, logger)
-    {
-    }
-
-    public async Task<List<TVShow>> GetByLibraryAsync(int libraryId)
+    public async Task<List<TVShow>> GetByLibraryAsync(string libraryId)
     {
         return await _dbSet
             .Include(t => t.Seasons)

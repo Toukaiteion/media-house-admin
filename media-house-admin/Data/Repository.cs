@@ -4,20 +4,13 @@ using Microsoft.Extensions.Logging;
 
 namespace MediaHouse.Data;
 
-public class Repository<T> : Interfaces.IRepository<T> where T : class
+public class Repository<T>(MediaHouseDbContext context, ILogger<Repository<T>> logger) : Interfaces.IRepository<T> where T : class
 {
-    protected readonly MediaHouseDbContext _context;
-    protected readonly ILogger<Repository<T>> _logger;
-    protected readonly DbSet<T> _dbSet;
+    protected readonly MediaHouseDbContext _context = context;
+    protected readonly ILogger<Repository<T>> _logger = logger;
+    protected readonly DbSet<T> _dbSet = context.Set<T>();
 
-    public Repository(MediaHouseDbContext context, ILogger<Repository<T>> logger)
-    {
-        _context = context;
-        _logger = logger;
-        _dbSet = context.Set<T>();
-    }
-
-    public virtual async Task<T?> GetByIdAsync(int id)
+    public virtual async Task<T?> GetByIdAsync(string id)
     {
         try
         {
@@ -72,12 +65,12 @@ public class Repository<T> : Interfaces.IRepository<T> where T : class
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating entity of type {EntityType}", typeof(T).Name);
+            _logger.LogError(ex, "Error updating entity of {EntityType}", typeof(T).Name);
             throw;
         }
     }
 
-    public virtual async Task<bool> DeleteAsync(int id)
+    public virtual async Task<bool> DeleteAsync(string id)
     {
         try
         {

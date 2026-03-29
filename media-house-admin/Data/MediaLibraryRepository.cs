@@ -4,13 +4,9 @@ using Microsoft.Extensions.Logging;
 
 namespace MediaHouse.Data;
 
-public class MediaLibraryRepository : Repository<MediaLibrary>, Interfaces.IMediaLibraryRepository
+public class MediaLibraryRepository(MediaHouseDbContext context, ILogger<MediaLibraryRepository> logger)
+    : Repository<MediaLibrary>(context, logger), Interfaces.IMediaLibraryRepository
 {
-    public MediaLibraryRepository(MediaHouseDbContext context, ILogger<MediaLibraryRepository> logger)
-        : base(context, logger)
-    {
-    }
-
     public async Task<MediaLibrary?> GetByNameAsync(string name)
     {
         return await _dbSet

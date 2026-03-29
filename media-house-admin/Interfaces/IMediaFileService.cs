@@ -5,9 +5,9 @@ namespace MediaHouse.Interfaces;
 public interface IMediaFileService
 {
     Task<MediaFile?> GetMediaFileByPathAsync(string path);
-    Task<MediaFile?> GetMediaFileByIdAsync(int id);
-    Task<MediaFile> CreateMediaFileAsync(string filePath, int? movieId = null, int? episodeId = null);
-    Task<MediaFile?> UpdateMediaFileAsync(int id, MediaFile updatedFile);
-    Task<bool> DeleteMediaFileAsync(int id);
-    Task<List<MediaFile>> GetMediaFilesForLibraryAsync(int libraryId);
+    Task<MediaFile?> GetMediaFileByIdAsync(string id);
+    Task<MediaFile> CreateMediaFileAsync(string filePath, string? movieId = null, string? episodeId = null);
+    Task<MediaFile?> UpdateMediaFileAsync(string id, MediaFile updatedFile);
+    Task<bool> DeleteMediaFileAsync(string id);
+    Task<List<MediaFile>> GetMediaFilesForLibraryAsync(string libraryId);
 }

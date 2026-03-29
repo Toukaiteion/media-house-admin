@@ -4,13 +4,9 @@ using Microsoft.Extensions.Logging;
 
 namespace MediaHouse.Data;
 
-public class AppUserRepository : Repository<AppUser>, Interfaces.IAppUserRepository
+public class AppUserRepository(MediaHouseDbContext context, ILogger<AppUserRepository> logger)
+    : Repository<AppUser>(context, logger), Interfaces.IAppUserRepository
 {
-    public AppUserRepository(MediaHouseDbContext context, ILogger<AppUserRepository> logger)
-        : base(context, logger)
-    {
-    }
-
     public async Task<AppUser?> GetByUsernameAsync(string username)
     {
         return await _dbSet

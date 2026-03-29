@@ -4,14 +4,10 @@ using Microsoft.Extensions.Logging;
 
 namespace MediaHouse.Data;
 
-public class EpisodeRepository : Repository<Episode>, Interfaces.IEpisodeRepository
+public class EpisodeRepository(MediaHouseDbContext context, ILogger<EpisodeRepository> logger)
+    : Repository<Episode>(context, logger), Interfaces.IEpisodeRepository
 {
-    public EpisodeRepository(MediaHouseDbContext context, ILogger<EpisodeRepository> logger)
-        : base(context, logger)
-    {
-    }
-
-    public async Task<List<Episode>> GetBySeasonAsync(int seasonId)
+    public async Task<List<Episode>> GetBySeasonAsync(string seasonId)
     {
         return await _dbSet
             .Include(e => e.MediaFile)
@@ -21,7 +17,7 @@ public class EpisodeRepository : Repository<Episode>, Interfaces.IEpisodeReposit
             .ToListAsync();
     }
 
-    public async Task<List<Episode>> GetByTVShowAsync(int tvShowId)
+    public async Task<List<Episode>> GetByTVShowAsync(string tvShowId)
     {
         return await _dbSet
             .Include(e => e.Season)
@@ -32,7 +28,7 @@ public class EpisodeRepository : Repository<Episode>, Interfaces.IEpisodeReposit
             .ToListAsync();
     }
 
-    public async Task<Episode?> GetByNumberAsync(int seasonId, int episodeNumber)
+    public async Task<Episode?> GetByNumberAsync(string seasonId, int episodeNumber)
     {
         return await _dbSet
             .Include(e => e.MediaFile)

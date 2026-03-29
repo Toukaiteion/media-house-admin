@@ -17,7 +17,7 @@ public class PlaybackService : IPlaybackService
         _logger = logger;
     }
 
-    public async Task<string> GetPlaybackUrlAsync(int mediaId, string mediaType)
+    public async Task<string> GetPlaybackUrlAsync(string mediaId, string mediaType)
     {
         string? filePath = null;
 
@@ -25,15 +25,15 @@ public class PlaybackService : IPlaybackService
         {
             var movie = await _context.Movies
                 .Include(m => m.MediaFile)
-                .FirstOrDefaultAsync(m => m.Id == mediaId);
-            filePath = movie?.MediaFile?.FilePath;
+                .FirstOrDefaultFirstOrDefaultAsync(m => m.Id == mediaId);
+            filePath = movie?.MediaFile?.Path;
         }
         else if (mediaType.ToLower() == "episode")
         {
             var episode = await _context.Episodes
                 .Include(e => e.MediaFile)
-                .FirstOrDefaultAsync(e => e.Id == mediaId);
-            filePath = episode?.MediaFile?.FilePath;
+                .FirstOrDefaultAsync(e => => e.Id == mediaId);
+            filePath = episode?.MediaFile?.Path;
         }
 
         if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
@@ -43,57 +43,64 @@ public class PlaybackService : IPlaybackService
         return $"/api/media/file?path={Uri.EscapeDataString(filePath)}";
     }
 
-    public async Task<PlaybackProgress?> GetPlaybackProgressAsync(string userId, int? movieId, int? episodeId)
+    public async Task<PlayRecord?> GetPlaybackProgressAsync(string userId, string mediaLibraryId, MediaType mediaType, string mediaId)
     {
-        return await _context.PlaybackProgresses
+        return await _context.PlayRecords
             .FirstOrDefaultAsync(p =>
                 p.UserId == userId &&
-                (movieId.HasValue ? p.MovieId == movieId : false) ||
-                (episodeId.HasValue ? p.EpisodeId == episodeId : false));
+                p.MediaLibraryId == mediaLibraryId &&
+                p.MediaType == mediaType &&
+                p.MediaId == mediaId);
     }
 
-    public async Task UpdatePlaybackProgressAsync(string userId, int? movieId, int? episodeId, double position, double? duration)
+    public async Task UpdatePlaybackProgressAsync(string userId, string mediaLibraryId, MediaType mediaType, string mediaId, double positionSeconds)
     {
-        var progress = await _context.PlaybackProgresses
+        var progress = await _context.PlayRecords
             .FirstOrDefaultAsync(p =>
                 p.UserId == userId &&
-                (movieId.HasValue ? p.MovieId == movieId : false) ||
-                (episodeId.HasValue ? p.EpisodeId == episodeId : false));
+                p.MediaLibraryId == mediaLibraryId &&
+                p.MediaType == mediaType &&
+                p.MediaId == mediaId);
+
+        long positionMs = (long)(positionSeconds * 1000);
 
         if (progress == null)
         {
-            progress = new PlaybackProgress
+            progress = new PlayRecord
             {
                 UserId = userId,
-                MovieId = movieId,
-                EpisodeId = episodeId,
-                Position = position,
-                Duration = duration
+                MediaLibraryId = mediaLibraryId,
+                MediaType = mediaType,
+                MediaId = mediaId,
+                PositionMs = positionMs,
+                LastPlayTime = DateTime.UtcNow
             };
-            _context.PlaybackProgresses.Add(progress);
+            _context.PlayRecords.Add(progress);
         }
         else
         {
-            progress.Position = position;
-            progress.Duration = duration;
-            progress.LastPlayed = DateTime.UtcNow;
+            progress.PositionMs = positionMs;
+            progress.LastPlayTime = DateTime.UtcNow;
+            progress.UpdatedAt = DateTime.UtcNow;
         }
 
         await _context.SaveChangesAsync();
     }
 
-    public async Task MarkAsCompletedAsync(string userId, int? movieId, int? episodeId)
+    public async Task MarkAsCompletedAsync(string userId, string mediaLibraryId, MediaType mediaType, string mediaId)
     {
-        var progress = await _context.PlaybackProgresses
+        var progress = await _context.PlayRecords
             .FirstOrDefaultAsync(p =>
                 p.UserId == userId &&
-                (movieId.HasValue ? p.MovieId == movieId : false) ||
-                (episodeId.HasValue ? p.EpisodeId == episodeId : false));
+                p.MediaLibraryId == mediaLibraryId &&
+                p.MediaType == mediaType &&
+                p.MediaId == mediaId);
 
         if (progress != null)
         {
-            progress.IsCompleted = true;
-            progress.LastPlayed = DateTime.UtcNow;
+            progress.IsFinished = true;
+            progress.LastPlayTime = DateTime.UtcNow;
+            progress.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
         }
     }

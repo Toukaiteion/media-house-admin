@@ -2,8 +2,8 @@ using MediaHouse.Entities;
 
 namespace MediaHouse.Interfaces;
 
-public interface ISeasonRepository : IRepository<Season>
+public interface ISeasonRepository : : IRepository<Season>
 {
-    Task<List<Season>> GetByTVShowAsync(int tvShowId);
-    Task<Season?> GetByNumberAsync(int tvShowId, int seasonNumber);
+    Task<List<Season>> GetByTVShowAsync(string tvShowId);
+    Task<Season?> GetByNumberAsync(string tvShowId, int seasonNumber);
 }
