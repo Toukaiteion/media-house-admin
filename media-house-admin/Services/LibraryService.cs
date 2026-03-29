@@ -1,4 +1,4 @@
-using MediaHouse.Entities;
+using MediaHouse.Data.Entities;
 using MediaHouse.Interfaces;
 using MediaHouse.Data;
 using Microsoft.EntityFrameworkCore;

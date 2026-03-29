@@ -1,4 +1,4 @@
-using MediaHouse.Entities;
+using MediaHouse.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace MediaHouse.Data;
@@ -187,6 +187,9 @@ public class MediaHouseDbContext : DbContext
         modelBuilder.Entity<PlayRecord>()
             .Property(p => p.MediaType)
             .HasConversion<string>();
+
+        modelBuilder.Entity<MediaTag>()
+            .HasKey(t => new { t.MediaLibraryId, t.TagName });
 
         modelBuilder.Entity<MediaTag>()
             .Property(t => t.MediaType)

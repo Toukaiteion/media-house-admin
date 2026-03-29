@@ -1,4 +1,4 @@
-namespace MediaHouse.Entities;
+namespace MediaHouse.Data.Entities;
 
 public enum MediaStaffType
 {

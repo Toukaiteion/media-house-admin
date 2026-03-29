@@ -1,4 +1,5 @@
 using MediaHouse.Data;
+using MediaHouse.Data.repository;
 using MediaHouse.Interfaces;
 using MediaHouse.Services;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,7 @@ builder.Services.AddScoped<ILibraryService, LibraryService>();
 builder.Services.AddScoped<IScanService, ScanService>();
 builder.Services.AddScoped<IMetadataService, MetadataService>();
 builder.Services.AddScoped<IConsistencyService, ConsistencyService>();
-builder.Services.AddScoped<IPlaybackService, PlaybackService>();
+builder.Services.AddScoped<IPlayRecordService, PlayRecordService>();
 builder.Services.AddScoped<IMediaFileService, MediaFileService>();
 builder.Services.AddScoped<DatabaseService>();
 

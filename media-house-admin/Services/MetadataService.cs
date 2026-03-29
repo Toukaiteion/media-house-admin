@@ -1,4 +1,4 @@
-using MediaHouse.Entities;
+using MediaHouse.Data.Entities;
 using MediaHouse.Interfaces;
 
 namespace MediaHouse.Services;

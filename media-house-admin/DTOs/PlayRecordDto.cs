@@ -1,8 +1,8 @@
-using MediaHouse.Entities;
+using MediaHouse.Data.Entities;
 
 namespace MediaHouse.DTOs;
 
-public class PlaybackUrlDto
+public class PlayRecordUrlDto
 {
     public string Url { get; set; } = string.Empty;
     public string? MimeType { get; set; }

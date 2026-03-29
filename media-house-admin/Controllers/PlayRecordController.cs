@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MediaHouse.DTOs;
 using MediaHouse.Interfaces;
-using MediaHouse.Entities;
+using MediaHouse.Data.Entities;
 
 namespace MediaHouse.Controllers;
 
@@ -21,12 +21,12 @@ public class PlayRecordController : ControllerBase
     }
 
     [HttpGet("url")]
-    public async Task<ActionResult<PlaybackUrlDto>> GetPlaybackUrl([FromQuery] string mediaId, [FromQuery] string mediaType)
+    public async Task<ActionResult<PlayRecordUrlDto>> GetPlaybackUrl([FromQuery] string mediaId, [FromQuery] string mediaType)
     {
         try
         {
             var url = await _playRecordService.GetPlaybackUrlAsync(mediaId, mediaType);
-            return Ok(new PlaybackUrlDto
+            return Ok(new PlayRecordUrlDto
             {
                 Url = url,
                 MimeType = GetMimeType(mediaType),
@@ -37,30 +37,6 @@ public class PlayRecordController : ControllerBase
         {
             _logger.LogError(ex, "Error getting playback URL for media {MediaId}", mediaId);
             return StatusCode(500, new { error = "Failed to get playback URL" });
-        }
-    }
-
-    [HttpGet("progress")]
-    public async Task<ActionResult<PlayRecordDto>> GetPlaybackProgress(
-        [FromQuery] string userId,
-        [FromQuery] string mediaLibraryId,
-        [FromQuery] MediaType mediaType,
-        [FromQuery] string mediaId)
-    {
-        try
-        {
-            var progress = await _playRecordService.GetPlaybackProgressAsync(userId, mediaLibraryId, mediaType, mediaId);
-            if (progress == null)
-            {
-                return NotFound(new { error = "No playback progress found" });
-            }
-
-            return Ok(MapToDto(progress));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting playback progress");
-            return StatusCode(500, new { error = "Failed to get playback progress" });
         }
     }
 

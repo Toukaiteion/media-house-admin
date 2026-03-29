@@ -1,4 +1,4 @@
-using MediaHouse.Entities;
+using MediaHouse.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace MediaHouse.Data.repository;

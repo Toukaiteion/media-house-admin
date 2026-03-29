@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using MediaHouse.Entities;
+using MediaHouse.Data.Entities;
 using MediaHouse.Interfaces;
 using MediaHouse.DTOs;
-using System.ComponentModel.DataAnnotations;
 
 namespace MediaHouse.Controllers;
 

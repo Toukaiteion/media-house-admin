@@ -1,5 +1,4 @@
 using Quartz;
-using Microsoft.Extensions.Logging;
 using MediaHouse.Interfaces;
 
 namespace MediaHouse.BackgroundJobs;
@@ -21,7 +20,7 @@ public class ScanJob : IJob
 
         try
         {
-            var libraryId = context.JobDetail.JobDataMap.GetStringValue("LibraryId");
+            var libraryId = "default"; // TODO: Pass libraryId as a parameter to the job
             await _scanService.StartIncrementalScanAsync(libraryId);
 
             _logger.LogInformation("Incremental scan job completed for library {LibraryId}", libraryId);
