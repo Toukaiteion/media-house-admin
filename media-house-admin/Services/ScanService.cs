@@ -5,22 +5,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MediaHouse.Services;
 
-public class ScanService : IScanService
+public class ScanService(MediaHouseDbContext context, ILogger<ScanService> logger) : IScanService
 {
-    private readonly MediaHouseDbContext _context;
-    private readonly ILogger<ScanService> _logger;
-
-    public ScanService(MediaHouseDbContext context, ILogger<ScanService> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
+    private readonly MediaHouseDbContext _context = context;
+    private readonly ILogger<ScanService> _logger = logger;
 
     public async Task<SystemSyncLog> StartFullScanAsync(string libraryId)
     {
-        var library = await _context.MediaLibraries.FindAsync(libraryId);
-        if (library == null)
-            throw new InvalidOperationException($"Library {libraryId} not found");
+        var library = await _context.MediaLibraries.FindAsync(libraryId) ?? 
+        throw new InvalidOperationException($"Library {libraryId} not found");
 
         var log = new SystemSyncLog
         {

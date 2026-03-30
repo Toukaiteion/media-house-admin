@@ -83,12 +83,7 @@ public class LibrariesController : ControllerBase
     {
         try
         {
-            if (!Enum.TryParse<LibraryType>(dto.Type, true, out var libraryType))
-            {
-                return BadRequest(new { error = "Invalid library type" });
-            }
-
-            var library = await _libraryService.UpdateLibraryAsync(id, dto.Name, libraryType, dto.Path, dto.IsEnabled);
+            var library = await _libraryService.UpdateLibraryAsync(id, dto.Name, dto.Path, dto.IsEnabled);
             if (library == null)
             {
                 return NotFound(new { error = "Library not found" });
@@ -132,7 +127,7 @@ public class LibrariesController : ControllerBase
                 return NotFound(new { error = "Library not found" });
             }
 
-            if (scanType.ToLower() == "full")
+            if (scanType.Equals("full", StringComparison.CurrentCultureIgnoreCase))
             {
                 await _scanService.StartFullScanAsync(id);
             }

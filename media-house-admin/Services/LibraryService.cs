@@ -50,13 +50,12 @@ public class LibraryService : ILibraryService
         return library;
     }
 
-    public async Task<MediaLibrary?> UpdateLibraryAsync(string id, string name, LibraryType type, string path, bool isEnabled)
+    public async Task<MediaLibrary?> UpdateLibraryAsync(string id, string name, string path, bool isEnabled)
     {
         var library = await _context.MediaLibraries.FindAsync(id);
         if (library == null) return null;
 
         library.Name = name;
-        library.Type = type;
         library.Path = path;
         library.IsEnabled = isEnabled;
         library.UpdatedAt = DateTime.UtcNow;

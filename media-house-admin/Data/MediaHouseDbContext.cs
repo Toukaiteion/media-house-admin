@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MediaHouse.Data;
 
-public class MediaHouseDbContext : DbContext
+public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) : DbContext(options)
 {
     public DbSet<MediaLibrary> MediaLibraries { get; set; }
     public DbSet<Movie> Movies { get; set; }
@@ -19,11 +19,6 @@ public class MediaHouseDbContext : DbContext
     public DbSet<MediaTag> MediaTags { get; set; }
     public DbSet<MyFavor> MyFavors { get; set; }
     public DbSet<MediaStaff> MediaStaffs { get; set; }
-
-    public MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options)
-        : base(options)
-    {
-    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
