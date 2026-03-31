@@ -11,9 +11,7 @@ public class Movie
     public string? Maker { get; set; }                       // 制作商
     public DateTime? ReleaseDate { get; set; }                // 上映日期
     public int? Runtime { get; set; }                       // 时长(分钟)
-    public long? SizeBytes { get; set; }                    // 文件总大小
     public decimal? Rating { get; set; }                     // 评分
-    public string? Marker { get; set; }                      // 标记
     public string? Overview { get; set; }                     // 简介
     public string? Description { get; set; }                  // 详细描述
     public string? PosterPath { get; set; }                  // 海报
