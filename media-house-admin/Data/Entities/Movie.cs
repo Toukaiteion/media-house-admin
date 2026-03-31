@@ -4,10 +4,11 @@ public class Movie
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string MediaLibraryId { get; set; } = string.Empty;
-    public int? Num { get; set; }                           // 编号/排序号
+    public string? Num { get; set; }                        // 编号/排序号
     public string Title { get; set; } = string.Empty;        // 标题
     public string? OriginalTitle { get; set; }                // 原始标题
     public string? Studio { get; set; }                      // 制片公司/工作室
+    public string? Maker { get; set; }                       // 制作商
     public DateTime? ReleaseDate { get; set; }                // 上映日期
     public int? Runtime { get; set; }                       // 时长(分钟)
     public long? SizeBytes { get; set; }                    // 文件总大小
