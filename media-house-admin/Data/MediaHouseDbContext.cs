@@ -53,38 +53,38 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
             .OnDelete(DeleteBehavior.Restrict);
 
         // Movie -> MediaFile (one-to-one via MovieId - legacy)
-        modelBuilder.Entity<Movie>()
-            .HasOne(m => m.MediaFile)
-            .WithOne()
-            .HasForeignKey<MediaFile>(mf => mf.MovieId)
+        modelBuilder.Entity<MediaFile>()
+            .HasOne(mf => mf.Movie)
+            .WithMany()
+            .HasForeignKey(mf => mf.MovieId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Episode -> MediaFile (one-to-one via EpisodeId - legacy)
-        modelBuilder.Entity<Episode>()
-            .HasOne(e => e.MediaFile)
-            .WithOne()
-            .HasForeignKey<MediaFile>(mf => mf.EpisodeId)
+        modelBuilder.Entity<MediaFile>()
+            .HasOne(mf => mf.Episode)
+            .WithMany()
+            .HasForeignKey(mf => mf.EpisodeId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Movie -> NfoMetadata (one-to-one)
-        modelBuilder.Entity<Movie>()
-            .HasOne(m => m.Metadata)
-            .WithOne()
-            .HasForeignKey<NfoMetadata>(nm => nm.MovieId)
+        modelBuilder.Entity<NfoMetadata>()
+            .HasOne(nm => nm.Movie)
+            .WithMany()
+            .HasForeignKey(nm => nm.MovieId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // TVShow -> NfoMetadata (one-to-one)
-        modelBuilder.Entity<TVShow>()
-            .HasOne(t => t.Metadata)
-            .WithOne()
-            .HasForeignKey<NfoMetadata>(nm => nm.TVShowId)
+        modelBuilder.Entity<NfoMetadata>()
+            .HasOne(nm => nm.TVShow)
+            .WithMany()
+            .HasForeignKey(nm => nm.TVShowId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Episode -> NfoMetadata (one-to-one)
-        modelBuilder.Entity<Episode>()
-            .HasOne(e => e.Metadata)
-            .WithOne()
-            .HasForeignKey<NfoMetadata>(nm => nm.EpisodeId)
+        modelBuilder.Entity<NfoMetadata>()
+            .HasOne(nm => nm.Episode)
+            .WithMany()
+            .HasForeignKey(nm => nm.EpisodeId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // SystemSyncLog -> MediaLibrary

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("media-house-admin")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9b8858b4b0b3f65416b0dbd0818c2676e8c8e281")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4528eedd28227fd66d46be063c55561997be8b50")]
 [assembly: System.Reflection.AssemblyProductAttribute("media-house-admin")]
 [assembly: System.Reflection.AssemblyTitleAttribute("media-house-admin")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

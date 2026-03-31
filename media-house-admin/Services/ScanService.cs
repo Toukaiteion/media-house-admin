@@ -5,22 +5,26 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MediaHouse.Services;
 
-public class ScanService(MediaHouseDbContext context, ILogger<ScanService> logger, IMetadataService metadataService) : IScanService
+public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService> logger, IMetadataService metadataService, MediaHouseDbContext context) : IScanService
 {
-    private readonly MediaHouseDbContext _context = context;
+    private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
     private readonly ILogger<ScanService> _logger = logger;
+    private readonly MediaHouseDbContext _context = context;
     private readonly IMetadataService _metadataService = metadataService;
 
     private static readonly string[] VideoExtensions = [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm"];
 
     public async Task<SystemSyncLog> StartFullScanAsync(string libraryId)
     {
-        var library = await _context.MediaLibraries.FindAsync(libraryId) ??
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<MediaHouseDbContext>();
+
+        var library = await context.MediaLibraries.FindAsync(libraryId) ??
             throw new InvalidOperationException($"Library {libraryId} not found");
 
         // Update library status
         library.Status = ScanStatus.Scanning;
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
         var log = new SystemSyncLog
         {
@@ -30,24 +34,57 @@ public class ScanService(MediaHouseDbContext context, ILogger<ScanService> logge
             StartTime = DateTime.UtcNow
         };
 
-        _context.SystemSyncLogs.Add(log);
-        await _context.SaveChangesAsync();
+        context.SystemSyncLogs.Add(log);
+        await context.SaveChangesAsync();
+
+        // Launch background task
+        _ = Task.Run(() => ExecuteFullScanAsync(libraryId, library.Path), CancellationToken.None);
+
+        return log;
+    }
+
+    private async Task ExecuteFullScanAsync(string libraryId, string libraryPath)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<MediaHouseDbContext>();
 
         try
         {
-            log.Status = SyncStatus.InProgress;
-            await _context.SaveChangesAsync();
+            var log = await context.SystemSyncLogs
+                .Where(sl => sl.MediaLibraryId == libraryId && sl.SyncType == SyncType.FullScan && sl.Status == SyncStatus.Started)
+                .OrderByDescending(sl => sl.StartTime)
+                .FirstOrDefaultAsync();
 
-            _logger.LogInformation("Starting full scan for library {LibraryId} at {Path}", libraryId, library.Path);
+            if (log == null)
+            {
+                _logger.LogWarning("No pending scan log found for library {LibraryId}", libraryId);
+                return;
+            }
+
+            var library = await context.MediaLibraries.FindAsync(libraryId);
+            if (library == null)
+            {
+                _logger.LogWarning("Library not found: {LibraryId}", libraryId);
+                log.Status = SyncStatus.Failed;
+                log.ErrorMessage = "Library not found";
+                log.EndTime = DateTime.UtcNow;
+                await context.SaveChangesAsync();
+                return;
+            }
+
+            log.Status = SyncStatus.InProgress;
+            await context.SaveChangesAsync();
+
+            _logger.LogInformation("Starting full scan for library {LibraryId} at {Path}", libraryId, libraryPath);
 
             // Get all movie directories
-            var movieDirectories = GetMovieDirectories(library.Path);
-            _logger.LogInformation("Found {Count} movie directories to scan", movieDirectories.Count);
+            var movieDirectories = GetMovieDirectories(libraryPath);
+            _logger.LogInformation("Found {Count} movie directories) to scan", movieDirectories.Count);
 
             foreach (var movieDir in movieDirectories)
             {
-                await ProcessMovieDirectoryAsync(libraryId, library.Path, movieDir[0], movieDir[1], log);
-                await _context.SaveChangesAsync();
+                await ProcessMovieDirectoryAsync(context, libraryId, libraryPath, movieDir[0], movieDir[1], log);
+                await context.SaveChangesAsync();
             }
 
             log.Status = SyncStatus.Completed;
@@ -56,29 +93,41 @@ public class ScanService(MediaHouseDbContext context, ILogger<ScanService> logge
             library.Status = ScanStatus.Idle;
             library.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             _logger.LogInformation("Full scan completed for library {LibraryId}. Added: {Added}, Updated: {Updated}",
                 libraryId, log.AddedCount, log.UpdatedCount);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Full scan failed for library {LibraryId}", libraryId);
-            log.Status = SyncStatus.Failed;
-            log.ErrorMessage = ex.Message;
-            log.EndTime = DateTime.UtcNow;
 
-            library.Status = ScanStatus.Error;
-            library.UpdatedAt = DateTime.UtcNow;
+            var log = await context.SystemSyncLogs
+                .Where(sl => sl.MediaLibraryId == libraryId && sl.SyncType == SyncType.FullScan && (sl.Status == SyncStatus.Started || sl.Status == SyncStatus.InProgress))
+                .OrderByDescending(sl => sl.StartTime)
+                .FirstOrDefaultAsync();
 
-            await _context.SaveChangesAsync();
-            throw;
+            if (log != null)
+            {
+                log.Status = SyncStatus.Failed;
+                log.ErrorMessage = ex.Message;
+                log.EndTime = DateTime.UtcNow;
+                await context.SaveChangesAsync();
+            }
+
+            var library = await context.MediaLibraries.FindAsync(libraryId);
+            if (library != null)
+            {
+                library.Status = ScanStatus.Error;
+                library.UpdatedAt = DateTime.UtcNow;
+                await context.SaveChangesAsync();
+            }
         }
-
-        return log;
     }
 
     public async Task<SystemSyncLog> StartIncrementalScanAsync(string libraryId)
     {
+        using var scope = _scopeFactory.CreateScope();
+        var _context = scope.ServiceProvider.GetRequiredService<MediaHouseDbContext>();
         var library = await _context.MediaLibraries.FindAsync(libraryId);
         if (library == null)
             throw new InvalidOperationException($"Library {libraryId} not found");
@@ -194,7 +243,7 @@ public class ScanService(MediaHouseDbContext context, ILogger<ScanService> logge
         return files.FirstOrDefault(f => f.EndsWith(".nfo", StringComparison.OrdinalIgnoreCase));
     }
 
-    private async Task ProcessMovieDirectoryAsync(string libraryId, string libraryPath, string movieDirName, string movieDirPath, SystemSyncLog log)
+    private async Task ProcessMovieDirectoryAsync(MediaHouseDbContext context, string libraryId, string libraryPath, string movieDirName, string movieDirPath, SystemSyncLog log)
     {
         _logger.LogInformation("Processing movie directory: {DirName}", movieDirName);
 
@@ -213,7 +262,7 @@ public class ScanService(MediaHouseDbContext context, ILogger<ScanService> logge
         var movieIdentifier = parseResult?.Num ?? movieDirName;
 
         // Check if movie already exists
-        var existingMovie = await _context.Movies
+        var existingMovie = await context.Movies
             .Include(m => m.Metadata)
             .Include(m => m.MediaFile)
             .Include(m => m.MediaLibrary)
@@ -278,7 +327,7 @@ public class ScanService(MediaHouseDbContext context, ILogger<ScanService> logge
                 existingMovie.Metadata.Genre = parseResult.Metadata.Genre ?? existingMovie.Metadata.Genre;
                 existingMovie.Metadata.Tags = parseResult.Metadata.Tags ?? existingMovie.Metadata.Tags;
             }
-            _context.Movies.Update(existingMovie);
+            context.Movies.Update(existingMovie);
         }
         else
         {
@@ -335,7 +384,7 @@ public class ScanService(MediaHouseDbContext context, ILogger<ScanService> logge
                 var metadata = parseResult.Metadata;
                 metadata.MovieId = movie.Id;
                 movie.Metadata = metadata;
-                _context.NfoMetadata.Add(metadata);
+                context.NfoMetadata.Add(metadata);
             }
 
             // Create MediaFile
@@ -354,7 +403,7 @@ public class ScanService(MediaHouseDbContext context, ILogger<ScanService> logge
             };
             movie.MediaFile = mediaFile;
 
-            _context.Movies.Add(movie);
+            context.Movies.Add(movie);
             log.AddedCount++;
 
             // Create tags
@@ -363,7 +412,7 @@ public class ScanService(MediaHouseDbContext context, ILogger<ScanService> logge
                 var tagList = parseResult.Metadata?.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
                 if (tagList != null && tagList.Any())
                 {
-                    await CreateTagsAsync(libraryId, movie.Id, tagList);
+                    await CreateTagsAsync(context, libraryId, movie.Id, tagList);
                 }
             }
 
@@ -371,7 +420,7 @@ public class ScanService(MediaHouseDbContext context, ILogger<ScanService> logge
             {
                 foreach (var actorName in parseResult.Actors)
                 {
-                    var staff = await GetOrCreateStaffAsync(actorName);
+                    var staff = await GetOrCreateStaffAsync(context, actorName);
 
                     var mediaStaff = new MediaStaff
                     {
@@ -383,15 +432,15 @@ public class ScanService(MediaHouseDbContext context, ILogger<ScanService> logge
                         UpdatedAt = DateTime.UtcNow
                     };
 
-                    _context.MediaStaffs.Add(mediaStaff);
+                    context.MediaStaffs.Add(mediaStaff);
                 }
             }
         }
     }
 
-    private async Task<Staff> GetOrCreateStaffAsync(string actorName)
+    private async Task<Staff> GetOrCreateStaffAsync(MediaHouseDbContext context, string actorName)
     {
-        var staff = await _context.Staffs.FirstOrDefaultAsync(s => s.Name == actorName);
+        var staff = await context.Staffs.FirstOrDefaultAsync(s => s.Name == actorName);
 
         if (staff == null)
         {
@@ -401,13 +450,13 @@ public class ScanService(MediaHouseDbContext context, ILogger<ScanService> logge
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-            _context.Staffs.Add(staff);
+            context.Staffs.Add(staff);
         }
 
         return staff;
     }
 
-    private async Task CreateTagsAsync(string libraryId, string movieId, List<string> tagNames)
+    private async Task CreateTagsAsync(MediaHouseDbContext context, string libraryId, string movieId, List<string> tagNames)
     {
         foreach (var tagName in tagNames)
         {
@@ -416,7 +465,7 @@ public class ScanService(MediaHouseDbContext context, ILogger<ScanService> logge
 
             var trimmedTagName = tagName.Trim();
 
-            var existingTag = await _context.MediaTags
+            var existingTag = await context.MediaTags
                 .FirstOrDefaultAsync(t => t.MediaLibraryId == libraryId && t.TagName == trimmedTagName);
 
             if (existingTag == null)
@@ -429,7 +478,7 @@ public class ScanService(MediaHouseDbContext context, ILogger<ScanService> logge
                     TagName = trimmedTagName,
                     CreatedAt = DateTime.UtcNow
                 };
-                _context.MediaTags.Add(mediaTag);
+                context.MediaTags.Add(mediaTag);
             }
         }
     }
