@@ -361,7 +361,10 @@ public class ScanService(MediaHouseDbContext context, ILogger<ScanService> logge
             if (parseResult?.Metadata?.Tags != null)
             {
                 var tagList = parseResult.Metadata?.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-                await CreateTagsAsync(libraryId, movie.Id, tagList);
+                if (tagList != null && tagList.Any())
+                {
+                    await CreateTagsAsync(libraryId, movie.Id, tagList);
+                }
             }
 
             if (parseResult?.Actors != null && parseResult.Actors.Count > 0)
