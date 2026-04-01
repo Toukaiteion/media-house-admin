@@ -9,22 +9,21 @@ public class MediaLibraryRepository(MediaHouseDbContext context, ILogger<MediaLi
     public async Task<MediaLibrary?> GetByNameAsync(string name)
     {
         return await _dbSet
-            .Include(ml => ml.Movies)
-            .Include(ml => ml.TVShows)
-            .FirstOrDefaultAsync(ml => ml.Name == name && !ml.IsDeleted);
+            .Include(ml => ml.MediaItems)
+            .FirstOrDefaultAsync(ml => ml.Name == name);
     }
 
     public async Task<List<MediaLibrary>> GetByTypeAsync(LibraryType type)
     {
         return await _dbSet
-            .Where(ml => ml.Type == type && !ml.IsDeleted)
+            .Where(ml => ml.Type == type)
             .ToListAsync();
     }
 
     public async Task<List<MediaLibrary>> GetEnabledAsync()
     {
         return await _dbSet
-            .Where(ml => ml.IsEnabled && !ml.IsDeleted)
+            .Where(ml => ml.IsEnabled)
             .ToListAsync();
     }
 }

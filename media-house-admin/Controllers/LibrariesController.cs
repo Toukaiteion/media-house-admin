@@ -7,21 +7,14 @@ namespace MediaHouse.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class LibrariesController : ControllerBase
+public class LibrariesController(
+    ILibraryService libraryService,
+    IScanService scanService,
+    ILogger<LibrariesController> logger) : ControllerBase
 {
-    private readonly ILibraryService _libraryService;
-    private readonly IScanService _scanService;
-    private readonly ILogger<LibrariesController> _logger;
-
-    public LibrariesController(
-        ILibraryService libraryService,
-        IScanService scanService,
-        ILogger<LibrariesController> logger)
-    {
-        _libraryService = libraryService;
-        _scanService = scanService;
-        _logger = logger;
-    }
+    private readonly ILibraryService _libraryService = libraryService;
+    private readonly IScanService _scanService = scanService;
+    private readonly ILogger<LibrariesController> _logger = logger;
 
     [HttpGet]
     public async Task<ActionResult<List<MediaLibraryDto>>> GetLibraries()
@@ -40,7 +33,7 @@ public class LibrariesController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<MediaLibraryDto>> GetLibrary(string id)
+    public async Task<ActionResult<MediaLibraryDto>> GetLibrary(int id)
     {
         try
         {
@@ -79,7 +72,7 @@ public class LibrariesController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<MediaLibraryDto>> UpdateLibrary(string id, [FromBody] UpdateMediaLibraryDto dto)
+    public async Task<ActionResult<MediaLibraryDto>> UpdateLibrary(int id, [FromBody] UpdateMediaLibraryDto dto)
     {
         try
         {
@@ -98,7 +91,7 @@ public class LibrariesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public async Task<ActionResult> DeleteLibrary(string id)
+    public async Task<ActionResult> DeleteLibrary(int id)
     {
         try
         {
@@ -117,7 +110,7 @@ public class LibrariesController : ControllerBase
     }
 
     [HttpPost("{id}/scan")]
-    public async Task<ActionResult> TriggerScan(string id, [FromQuery] string scanType = "full")
+    public async Task<ActionResult> TriggerScan(int id, [FromQuery] string scanType = "full")
     {
         try
         {
@@ -146,7 +139,7 @@ public class LibrariesController : ControllerBase
     }
 
     [HttpGet("{id}/scan-logs")]
-    public async Task<ActionResult<List<ScanLogDto>>> GetScanLogs(string id, [FromQuery] int limit = 10)
+    public async Task<ActionResult<List<ScanLogDto>>> GetScanLogs(int id, [FromQuery] int limit = 10)
     {
         try
         {
@@ -182,8 +175,8 @@ public class LibrariesController : ControllerBase
             Type = library.Type.ToString(),
             Path = library.Path,
             Status = library.Status.ToString(),
-            CreatedAt = library.CreatedAt,
-            UpdatedAt = library.UpdatedAt,
+            CreatedAt = library.CreateTime,
+            UpdatedAt = library.UpdateTime,
             IsEnabled = library.IsEnabled
         };
     }

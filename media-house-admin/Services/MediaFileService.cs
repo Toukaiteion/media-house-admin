@@ -22,12 +22,12 @@ public class MediaFileService : IMediaFileService
             .FirstOrDefaultAsync(mf => mf.Path == path);
     }
 
-    public async Task<MediaFile?> GetMediaFileByIdAsync(string id)
+    public async Task<MediaFile?> GetMediaFileByIdAsync(int id)
     {
         return await _context.MediaFiles.FindAsync(id);
     }
 
-    public async Task<MediaFile> CreateMediaFileAsync(string filePath, string? movieId = null, string? episodeId = null)
+    public async Task<MediaFile> CreateMediaFileAsync(string filePath, int? movieId = null, int? episodeId = null)
     {
         if (!File.Exists(filePath))
             throw new FileNotFoundException($"File not found: {filePath}");
@@ -53,7 +53,7 @@ public class MediaFileService : IMediaFileService
         return mediaFile;
     }
 
-    public async Task<MediaFile?> UpdateMediaFileAsync(string id, MediaFile updatedFile)
+    public async Task<MediaFile?> UpdateMediaFileAsync(int id, MediaFile updatedFile)
     {
         var mediaFile = await _context.MediaFiles.FindAsync(id);
         if (mediaFile == null) return null;
@@ -74,7 +74,7 @@ public class MediaFileService : IMediaFileService
         return mediaFile;
     }
 
-    public async Task<bool> DeleteMediaFileAsync(string id)
+    public async Task<bool> DeleteMediaFileAsync(int id)
     {
         var mediaFile = await _context.MediaFiles.FindAsync(id);
         if (mediaFile == null) return false;
@@ -85,7 +85,7 @@ public class MediaFileService : IMediaFileService
         return true;
     }
 
-    public async Task<List<MediaFile>> GetMediaFilesForLibraryAsync(string libraryId)
+    public async Task<List<MediaFile>> GetMediaFilesForLibraryAsync(int libraryId)
     {
         // TODO: Implement proper query to get media files by library
         return await _context.MediaFiles.ToListAsync();

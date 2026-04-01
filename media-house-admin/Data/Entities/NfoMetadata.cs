@@ -2,7 +2,7 @@ namespace MediaHouse.Data.Entities;
 
 public class NfoMetadata
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public int Id { get; set; } 
     public string? OriginalXml { get; set; }
 
     // Parsed fields
@@ -19,9 +19,9 @@ public class NfoMetadata
     public string? Studios { get; set; }
 
     // Foreign keys
-    public string? MovieId { get; set; }
-    public string? TVShowId { get; set; }
-    public string? EpisodeId { get; set; }
+    public int? MovieId { get; set; }
+    public int? TVShowId { get; set; }
+    public int? EpisodeId { get; set; }
 
     // Navigation properties
     public Movie? Movie { get; set; }

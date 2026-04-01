@@ -6,7 +6,7 @@ namespace MediaHouse.Data.repository;
 public class MovieRepository(MediaHouseDbContext context, ILogger<MovieRepository> logger)
     : Repository<Movie>(context, logger), Interfaces.IMovieRepository
 {
-    public async Task<List<Movie>> GetByLibraryAsync(string libraryId)
+    public async Task<List<Movie>> GetByLibraryAsync(int libraryId)
     {
         return await _dbSet
             .Include(m => m.MediaFile)

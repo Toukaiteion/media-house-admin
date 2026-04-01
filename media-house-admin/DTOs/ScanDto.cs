@@ -2,8 +2,8 @@ namespace MediaHouse.DTOs;
 
 public class ScanLogDto
 {
-    public string Id { get; set; } = string.Empty;
-    public string MediaLibraryId { get; set; } = string.Empty;
+    public int Id { get; set; }
+    public int MediaLibraryId { get; set; }
     public string SyncType { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public int AddedCount { get; set; }

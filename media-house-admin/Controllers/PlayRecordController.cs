@@ -21,7 +21,7 @@ public class PlayRecordController : ControllerBase
     }
 
     [HttpGet("url")]
-    public async Task<ActionResult<PlayRecordUrlDto>> GetPlaybackUrl([FromQuery] string mediaId, [FromQuery] string mediaType)
+    public async Task<ActionResult<PlayRecordUrlDto>> GetPlaybackUrl([FromQuery] int mediaId, [FromQuery] string mediaType)
     {
         try
         {

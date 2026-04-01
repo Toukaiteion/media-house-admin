@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "N36o5K5xxEw=",
+  "dgSpecHash": "AfFHFgunl3s=",
   "success": true,
   "projectFilePath": "G:\\project\\MediaHouse\\media-house-admin\\media-house-admin\\media-house-admin.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\RedMoon\\.nuget\\packages\\efcore.namingconventions\\9.0.0\\efcore.namingconventions.9.0.0.nupkg.sha512",
     "C:\\Users\\RedMoon\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\RedMoon\\.nuget\\packages\\mediainfo.native\\26.1.0\\mediainfo.native.26.1.0.nupkg.sha512",
     "C:\\Users\\RedMoon\\.nuget\\packages\\mediainfo.wrapper\\26.1.0\\mediainfo.wrapper.26.1.0.nupkg.sha512",

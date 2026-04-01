@@ -9,7 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add SQLite database
 builder.Services.AddDbContext<MediaHouseDbContext>(options =>
-    options.UseSqlite("Data Source=mediahouse.db"));
+    options.UseSqlite("Data Source=mediahouse.db").UseSnakeCaseNamingConvention());
 
 // Register services
 builder.Services.AddScoped<ILibraryService, LibraryService>();

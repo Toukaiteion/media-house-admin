@@ -6,7 +6,7 @@ namespace MediaHouse.Data.repository;
 public class TVShowRepository(MediaHouseDbContext context, ILogger<TVShowRepository> logger)
     : Repository<TVShow>(context, logger), Interfaces.ITVShowRepository
 {
-    public async Task<List<TVShow>> GetByLibraryAsync(string libraryId)
+    public async Task<List<TVShow>> GetByLibraryAsync(int libraryId)
     {
         return await _dbSet
             .Include(t => t.Seasons)

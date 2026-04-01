@@ -2,9 +2,9 @@ namespace MediaHouse.Data.Entities;
 
 public class Episode
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string TVShowId { get; set; } = string.Empty;
-    public string SeasonId { get; set; } = string.Empty;
+    public int Id { get; set; }
+    public int TVShowId { get; set; }
+    public int SeasonId { get; set; }
     public int EpisodeNumber { get; set; }
     public string? Title { get; set; }
     public string? Overview { get; set; }

@@ -9,7 +9,7 @@ public enum RoleType
 
 public class Staff
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? AvatarPath { get; set; }
     public string? Country { get; set; }

@@ -2,11 +2,11 @@ namespace MediaHouse.Data.Entities;
 
 public class PlayRecord
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string UserId { get; set; } = string.Empty;
-    public string MediaLibraryId { get; set; } = string.Empty;
+    public int Id { get; set; }
+    public int UserId { get; set; }
+    public int MediaLibraryId { get; set; }
     public MediaType MediaType { get; set; }
-    public string MediaId { get; set; } = string.Empty;                         // movies id / episode id
+    public int MediaId { get; set; } = 0;                         // movies id / episode id
     public long PositionMs { get; set; } = 0;                // 播放进度（毫秒）
     public bool IsFinished { get; set; } = false;
     public DateTime? LastPlayTime { get; set; }

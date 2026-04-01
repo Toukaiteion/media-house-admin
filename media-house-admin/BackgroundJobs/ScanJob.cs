@@ -20,7 +20,7 @@ public class ScanJob : IJob
 
         try
         {
-            var libraryId = "default"; // TODO: Pass libraryId as a parameter to the job
+            var libraryId = 1; // TODO: Pass libraryId as a parameter to the job
             await _scanService.StartIncrementalScanAsync(libraryId);
 
             _logger.LogInformation("Incremental scan job completed for library {LibraryId}", libraryId);

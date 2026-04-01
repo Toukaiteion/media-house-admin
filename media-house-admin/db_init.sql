@@ -3,12 +3,14 @@ PRAGMA foreign_keys = OFF;
 -- ==============================
 -- 1. 媒体库（可创建多个库：电影、美剧、动漫等）
 -- ==============================
+DROP TABLE IF EXISTS media_libraries;
 CREATE TABLE media_libraries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(100) NOT NULL,         -- 库名
     type VARCHAR(20) NOT NULL,          -- movie / tv
     path VARCHAR(500) NOT NULL,         -- 库路径
-    enabled BOOLEAN DEFAULT 1,
+	status VARCHAR(20) ,
+    is_enabled BOOLEAN DEFAULT 1,
     create_time TIMESTAMP DEFAULT (datetime('now','localtime')),
     update_time TIMESTAMP DEFAULT (datetime('now','localtime'))
 );
@@ -16,7 +18,8 @@ CREATE TABLE media_libraries (
 -- ==============================
 -- 2. 媒体
 -- ==============================
-CREATE TABLE media_item (
+DROP TABLE IF EXISTS media_items;
+CREATE TABLE media_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 	library_id INTEGER NOT NULL,
     name VARCHAR(100) NOT NULL,         -- 媒体名
@@ -38,14 +41,15 @@ CREATE TABLE media_item (
 -- ==============================
 -- 2. 电影  media_item的type=movie，详细信息
 -- ==============================
+DROP TABLE IF EXISTS movies;
 CREATE TABLE movies (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     library_id INTEGER NOT NULL,
 	media_item INTEGER NOT NULL,
-    num INTEGER,                          -- 编号/排序号
-    studio VARCHAR(255),                  -- 制片公司/工作室    
+    num VARCHAR(64),                          -- 编号/排序号
+    studio VARCHAR(255),                  -- 制片公司/工作室
+    marker VARCHAR(100),                 -- 制作公司
     runtime INTEGER,                     -- 时长(分钟)
-    marker VARCHAR(100),                 -- 标记
     description TEXT,                    -- 详细描述
     
     screenshots_path VARCHAR(4096),      -- 截图路径
@@ -56,6 +60,7 @@ CREATE TABLE movies (
 -- ==============================
 -- 3. 电视剧/剧集
 -- ==============================
+DROP TABLE IF EXISTS tv_shows;
 CREATE TABLE tv_shows (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     library_id INTEGER NOT NULL,
@@ -74,6 +79,7 @@ CREATE TABLE tv_shows (
 -- ==============================
 -- 4. 季
 -- ==============================
+DROP TABLE IF EXISTS seasons;
 CREATE TABLE seasons (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     tv_show_id INTEGER NOT NULL,         -- 所属剧集
@@ -88,6 +94,7 @@ CREATE TABLE seasons (
 -- ==============================
 -- 5. 集
 -- ==============================
+DROP TABLE IF EXISTS episodes;
 CREATE TABLE episodes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     tv_show_id INTEGER NOT NULL,
@@ -104,6 +111,7 @@ CREATE TABLE episodes (
 -- ==============================
 -- 6. 媒体文件（电影/季/集 都对应一个文件）
 -- ==============================
+DROP TABLE IF EXISTS media_file;
 CREATE TABLE media_file (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     media_type VARCHAR(20) NOT NULL,     -- movie / episode
@@ -125,6 +133,7 @@ CREATE TABLE media_file (
 -- ==============================
 -- 图片资源
 -- ==============================
+DROP TABLE IF EXISTS media_imgs;
 CREATE TABLE media_imgs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     url_name VARCHAR(128) NOT NULL,     -- 例如 p300111.jpg
@@ -143,6 +152,7 @@ CREATE TABLE media_imgs (
 -- ==============================
 -- 7. 媒体标签绑定
 -- ==============================
+DROP TABLE IF EXISTS media_tags;
 CREATE TABLE media_tags (
 	lib_id INTEGER NOT NULL,
     media_type VARCHAR(20) NOT NULL,
@@ -155,6 +165,7 @@ CREATE TABLE media_tags (
 -- ==============================
 -- 8. 用户表
 -- ==============================
+DROP TABLE IF EXISTS app_user;
 CREATE TABLE app_user (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -168,6 +179,7 @@ CREATE TABLE app_user (
 -- ==============================
 -- 9. 我的收藏
 -- ==============================
+DROP TABLE IF EXISTS my_favor;
 CREATE TABLE my_favor (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -180,6 +192,7 @@ CREATE TABLE my_favor (
 -- ==============================
 -- 10. 播放记录
 -- ==============================
+DROP TABLE IF EXISTS play_record;
 CREATE TABLE play_record (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -196,6 +209,7 @@ CREATE TABLE play_record (
 -- ==============================
 -- 11. 人员表（导演、演员、编剧）
 -- ==============================
+DROP TABLE IF EXISTS staff;
 CREATE TABLE staff (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(100) NOT NULL,         -- 人员姓名
@@ -208,6 +222,7 @@ CREATE TABLE staff (
 -- ==============================
 -- 12. 媒体 <-> 人员 关联表
 -- ==============================
+DROP TABLE IF EXISTS media_staff;
 CREATE TABLE media_staff (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     media_type VARCHAR(20) NOT NULL,    -- movie / tv_show / season / episode

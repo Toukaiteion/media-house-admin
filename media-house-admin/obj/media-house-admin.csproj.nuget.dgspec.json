@@ -45,6 +45,10 @@
         "net10.0": {
           "targetAlias": "net10.0",
           "dependencies": {
+            "EFCore.NamingConventions": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
             "MediaInfo.Wrapper": {
               "target": "Package",
               "version": "[26.1.0, )"

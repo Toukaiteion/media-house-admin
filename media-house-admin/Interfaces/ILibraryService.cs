@@ -5,9 +5,9 @@ namespace MediaHouse.Interfaces;
 public interface ILibraryService
 {
     Task<List<MediaLibrary>> GetAllLibrariesAsync();
-    Task<MediaLibrary?> GetLibraryByIdAsync(string id);
+    Task<MediaLibrary?> GetLibraryByIdAsync(int id);
     Task<MediaLibrary> CreateLibraryAsync(string name, LibraryType type, string path);
-    Task<MediaLibrary?> UpdateLibraryAsync(string id, string name, string path, bool isEnabled);
-    Task<bool> DeleteLibraryAsync(string id);
-    Task<bool> TriggerScanAsync(string id);
+    Task<MediaLibrary?> UpdateLibraryAsync(int id, string name, string path, bool isEnabled);
+    Task<bool> DeleteLibraryAsync(int id);
+    Task<bool> TriggerScanAsync(int id);
 }

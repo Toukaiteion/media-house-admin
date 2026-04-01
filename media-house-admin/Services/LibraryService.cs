@@ -5,29 +5,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MediaHouse.Services;
 
-public class LibraryService : ILibraryService
+public class LibraryService(MediaHouseDbContext context, ILogger<LibraryService> logger) : ILibraryService
 {
-    private readonly MediaHouseDbContext _context;
-    private readonly ILogger<LibraryService> _logger;
-
-    public LibraryService(MediaHouseDbContext context, ILogger<LibraryService> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
+    private readonly MediaHouseDbContext _context = context;
+    private readonly ILogger<LibraryService> _logger = logger;
 
     public async Task<List<MediaLibrary>> GetAllLibrariesAsync()
     {
         return await _context.MediaLibraries
-            .Where(l => !l.IsDeleted) // Add IsDeleted property to entity if needed
             .ToListAsync();
     }
 
-    public async Task<MediaLibrary?> GetLibraryByIdAsync(string id)
+    public async Task<MediaLibrary?> GetLibraryByIdAsync(int id)
     {
         return await _context.MediaLibraries
-            .Include(l => l.Movies)
-            .Include(l => l.TVShows)
+            .Include(l => l.MediaItems)
             .FirstOrDefaultAsync(l => l.Id == id);
     }
 
@@ -50,7 +42,7 @@ public class LibraryService : ILibraryService
         return library;
     }
 
-    public async Task<MediaLibrary?> UpdateLibraryAsync(string id, string name, string path, bool isEnabled)
+    public async Task<MediaLibrary?> UpdateLibraryAsync(int id, string name, string path, bool isEnabled)
     {
         var library = await _context.MediaLibraries.FindAsync(id);
         if (library == null) return null;
@@ -58,14 +50,14 @@ public class LibraryService : ILibraryService
         library.Name = name;
         library.Path = path;
         library.IsEnabled = isEnabled;
-        library.UpdatedAt = DateTime.UtcNow;
+        library.UpdateTime = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
 
         return library;
     }
 
-    public async Task<bool> DeleteLibraryAsync(string id)
+    public async Task<bool> DeleteLibraryAsync(int id)
     {
         var library = await _context.MediaLibraries.FindAsync(id);
         if (library == null) return false;
@@ -76,13 +68,13 @@ public class LibraryService : ILibraryService
         return true;
     }
 
-    public async Task<bool> TriggerScanAsync(string id)
+    public async Task<bool> TriggerScanAsync(int id)
     {
         var library = await _context.MediaLibraries.FindAsync(id);
         if (library == null) return false;
 
         library.Status = ScanStatus.Scanning;
-        library.UpdatedAt = DateTime.UtcNow;
+        library.UpdateTime = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
         // TODO: Implement actual scanning logic

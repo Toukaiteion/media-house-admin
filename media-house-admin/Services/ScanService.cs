@@ -14,7 +14,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
 
     private static readonly string[] VideoExtensions = [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm"];
 
-    public async Task<SystemSyncLog> StartFullScanAsync(string libraryId)
+    public async Task<SystemSyncLog> StartFullScanAsync(int libraryId)
     {
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<MediaHouseDbContext>();
@@ -43,7 +43,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
         return log;
     }
 
-    private async Task ExecuteFullScanAsync(string libraryId, string libraryPath)
+    private async Task ExecuteFullScanAsync(int libraryId, string libraryPath)
     {
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<MediaHouseDbContext>();
@@ -91,7 +91,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
             log.EndTime = DateTime.UtcNow;
 
             library.Status = ScanStatus.Idle;
-            library.UpdatedAt = DateTime.UtcNow;
+            library.UpdateTime = DateTime.UtcNow;
 
             await context.SaveChangesAsync();
             _logger.LogInformation("Full scan completed for library {LibraryId}. Added: {Added}, Updated: {Updated}",
@@ -118,13 +118,13 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
             if (library != null)
             {
                 library.Status = ScanStatus.Error;
-                library.UpdatedAt = DateTime.UtcNow;
+                library.UpdateTime = DateTime.UtcNow;
                 await context.SaveChangesAsync();
             }
         }
     }
 
-    public async Task<SystemSyncLog> StartIncrementalScanAsync(string libraryId)
+    public async Task<SystemSyncLog> StartIncrementalScanAsync(int libraryId)
     {
         using var scope = _scopeFactory.CreateScope();
         var _context = scope.ServiceProvider.GetRequiredService<MediaHouseDbContext>();
@@ -168,7 +168,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
         return log;
     }
 
-    public async Task<SystemSyncLog?> GetLatestScanLogAsync(string libraryId)
+    public async Task<SystemSyncLog?> GetLatestScanLogAsync(int libraryId)
     {
         return await _context.SystemSyncLogs
             .Where(sl => sl.MediaLibraryId == libraryId)
@@ -176,7 +176,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
             .FirstOrDefaultAsync();
     }
 
-    public async Task<List<SystemSyncLog>> GetScanLogsAsync(string libraryId, int limit = 10)
+    public async Task<List<SystemSyncLog>> GetScanLogsAsync(int libraryId, int limit = 10)
     {
         return await _context.SystemSyncLogs
             .Where(sl => sl.MediaLibraryId == libraryId)
@@ -243,7 +243,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
         return files.FirstOrDefault(f => f.EndsWith(".nfo", StringComparison.OrdinalIgnoreCase));
     }
 
-    private async Task ProcessMovieDirectoryAsync(MediaHouseDbContext context, string libraryId, string libraryPath, string movieDirName, string movieDirPath, SystemSyncLog log)
+    private async Task ProcessMovieDirectoryAsync(MediaHouseDbContext context, int libraryId, string libraryPath, string movieDirName, string movieDirPath, SystemSyncLog log)
     {
         _logger.LogInformation("Processing movie directory: {DirName}", movieDirName);
 
@@ -456,7 +456,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
         return staff;
     }
 
-    private async Task CreateTagsAsync(MediaHouseDbContext context, string libraryId, string movieId, List<string> tagNames)
+    private async Task CreateTagsAsync(MediaHouseDbContext context, int libraryId, int movieId, List<string> tagNames)
     {
         foreach (var tagName in tagNames)
         {

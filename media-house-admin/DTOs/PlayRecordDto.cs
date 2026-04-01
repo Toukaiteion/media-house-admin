@@ -11,11 +11,11 @@ public class PlayRecordUrlDto
 
 public class PlayRecordDto
 {
-    public string Id { get; set; } = string.Empty;
-    public string UserId { get; set; } = string.Empty;
-    public string MediaLibraryId { get; set; } = string.Empty;
+    public int Id { get; set; }
+    public int UserId { get; set; }
+    public int MediaLibraryId { get; set; }
     public MediaType MediaType { get; set; }
-    public string MediaId { get; set; } = string.Empty;
+    public int MediaId { get; set; }
     public long PositionMs { get; set; }
     public bool IsFinished { get; set; }
     public DateTime? LastPlayTime { get; set; }
@@ -25,9 +25,9 @@ public class PlayRecordDto
 
 public class UpdatePlayRecordDto
 {
-    public string UserId { get; set; } = string.Empty;
-    public string MediaLibraryId { get; set; } = string.Empty;
+    public int UserId { get; set; }
+    public int MediaLibraryId { get; set; }
     public MediaType MediaType { get; set; }
-    public string MediaId { get; set; } = string.Empty;
+    public int MediaId { get; set; }
     public double PositionSeconds { get; set; }
 }

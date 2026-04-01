@@ -10,7 +10,7 @@ public class PlayRecordService(MediaHouseDbContext context, ILogger<PlayRecordSe
     private readonly MediaHouseDbContext _context = context;
     private readonly ILogger<PlayRecordService> _logger = logger;
 
-    public async Task<string> GetPlaybackUrlAsync(string mediaId, string mediaType)
+    public async Task<string> GetPlaybackUrlAsync(int mediaId, string mediaType)
     {
         string? filePath = null;
 
@@ -36,7 +36,7 @@ public class PlayRecordService(MediaHouseDbContext context, ILogger<PlayRecordSe
         return $"/api/media/file?path={Uri.EscapeDataString(filePath)}";
     }
 
-    public async Task<PlayRecord?> GetPlaybackProgressAsync(string userId, string mediaLibraryId, MediaType mediaType, string mediaId)
+    public async Task<PlayRecord?> GetPlaybackProgressAsync(int userId, int mediaLibraryId, MediaType mediaType, int mediaId)
     {
         return await _context.PlayRecords
             .FirstOrDefaultAsync(p =>
@@ -46,7 +46,7 @@ public class PlayRecordService(MediaHouseDbContext context, ILogger<PlayRecordSe
                 p.MediaId == mediaId);
     }
 
-    public async Task UpdatePlaybackProgressAsync(string userId, string mediaLibraryId, MediaType mediaType, string mediaId, double positionSeconds)
+    public async Task UpdatePlaybackProgressAsync(int userId, int mediaLibraryId, MediaType mediaType, int mediaId, double positionSeconds)
     {
         var progress = await _context.PlayRecords
             .FirstOrDefaultAsync(p =>
@@ -80,7 +80,7 @@ public class PlayRecordService(MediaHouseDbContext context, ILogger<PlayRecordSe
         await _context.SaveChangesAsync();
     }
 
-    public async Task MarkAsCompletedAsync(string userId, string mediaLibraryId, MediaType mediaType, string mediaId)
+    public async Task MarkAsCompletedAsync(int userId, int mediaLibraryId, MediaType mediaType, int mediaId)
     {
         var progress = await _context.PlayRecords
             .FirstOrDefaultAsync(p =>

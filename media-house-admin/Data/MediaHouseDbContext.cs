@@ -19,18 +19,14 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
     public DbSet<MediaTag> MediaTags { get; set; }
     public DbSet<MyFavor> MyFavors { get; set; }
     public DbSet<MediaStaff> MediaStaffs { get; set; }
+    public DbSet<MediaItem> MediaItems { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // MediaLibrary relationships
+        // MediaLibrary -> MediaItems
         modelBuilder.Entity<MediaLibrary>()
-            .HasMany(m => m.Movies)
-            .WithOne(m => m.MediaLibrary)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<MediaLibrary>()
-            .HasMany(m => m.TVShows)
-            .WithOne(t => t.MediaLibrary)
+            .HasMany(m => m.MediaItems)
+            .WithOne(mi => mi.Library)
             .OnDelete(DeleteBehavior.Cascade);
 
         // TVShow -> Seasons

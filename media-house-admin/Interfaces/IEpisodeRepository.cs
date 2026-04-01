@@ -4,7 +4,7 @@ namespace MediaHouse.Interfaces;
 
 public interface IEpisodeRepository : IRepository<Episode>
 {
-    Task<List<Episode>> GetBySeasonAsync(string seasonId);
-    Task<List<Episode>> GetByTVShowAsync(string tvShowId);
-    Task<Episode?> GetByNumberAsync(string seasonId, int episodeNumber);
+    Task<List<Episode>> GetBySeasonAsync(int seasonId);
+    Task<List<Episode>> GetByTVShowAsync(int tvShowId);
+    Task<Episode?> GetByNumberAsync(int seasonId, int episodeNumber);
 }

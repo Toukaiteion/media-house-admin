@@ -10,10 +10,10 @@ public enum MediaStaffType
 
 public class MediaStaff
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public int Id { get; set; }
     public MediaStaffType MediaType { get; set; }    // movie / tv_show / season / episode
-    public string MediaId { get; set; } = string.Empty;               // 对应媒体ID
-    public string StaffId { get; set; } = string.Empty;                // 关联人员ID
+    public int MediaId { get; set; }             // 对应媒体ID
+    public int StaffId { get; set; }               // 关联人员ID
     public RoleType RoleType { get; set; }          // director / actor / writer
     public string? RoleName { get; set; }           // 饰演角色名（演员专用）
     public int SortOrder { get; set; } = 0;         // 排序（主演靠前）

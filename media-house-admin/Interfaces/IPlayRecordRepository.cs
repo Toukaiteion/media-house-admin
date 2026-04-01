@@ -4,7 +4,7 @@ namespace MediaHouse.Interfaces;
 
 public interface IPlayRecordRepository : IRepository<PlayRecord>
 {
-    Task<PlayRecord?> GetByUserAndMediaAsync(string userId, MediaType mediaType, string mediaId);
-    Task<List<PlayRecord>> GetByUserAsync(string userId);
-    Task<List<PlayRecord>> GetRecentAsync(string userId, int limit = 10);
+    Task<PlayRecord?> GetByUserAndMediaAsync(int userId, MediaType mediaType, int mediaId);
+    Task<List<PlayRecord>> GetByUserAsync(int userId);
+    Task<List<PlayRecord>> GetRecentAsync(int userId, int limit = 10);
 }
