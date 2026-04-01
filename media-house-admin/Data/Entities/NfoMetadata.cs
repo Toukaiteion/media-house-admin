@@ -12,7 +12,7 @@ public class NfoMetadata
     public string? Writer { get; set; }
     public float? Rating { get; set; }
     public int? Year { get; set; }
-    public DateTime? Premiered { get; set; }
+    public string? Premiered { get; set; }
     public DateTime? DateAdded { get; set; }
     public string? Genre { get; set; }
     public string? Tags { get; set; }

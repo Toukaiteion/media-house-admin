@@ -279,9 +279,9 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
                 existingMovie.Runtime = parseResult.Runtime ?? existingMovie.Runtime;
                 existingMovie.Overview = parseResult.Metadata.Plot ?? existingMovie.Overview;
 
-                if (parseResult.Metadata.Premiered.HasValue)
+                if (!string.IsNullOrEmpty(parseResult.Metadata.Premiered))
                 {
-                    existingMovie.ReleaseDate = parseResult.Metadata.Premiered.Value;
+                    existingMovie.ReleaseDate = parseResult.Metadata.Premiered;
                 }
 
                 if (parseResult.Metadata.Studios != null)
@@ -347,9 +347,9 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
                 UpdatedAt = DateTime.UtcNow
             };
 
-            if (parseResult?.Metadata.Premiered.HasValue == true)
+            if (!string.IsNullOrEmpty(parseResult?.Metadata.Premiered))
             {
-                movie.ReleaseDate = parseResult.Metadata.Premiered.Value;
+                movie.ReleaseDate = parseResult.Metadata.Premiered;
             }
 
             // Set image paths

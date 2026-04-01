@@ -6,18 +6,12 @@ namespace MediaHouse.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class MoviesController : ControllerBase
+public class MoviesController(
+    IMediaFileService mediaFileService,
+    ILogger<MoviesController> logger) : ControllerBase
 {
-    private readonly IMediaFileService _mediaFileService;
-    private readonly ILogger<MoviesController> _logger;
-
-    public MoviesController(
-        IMediaFileService mediaFileService,
-        ILogger<MoviesController> logger)
-    {
-        _mediaFileService = mediaFileService;
-        _logger = logger;
-    }
+    private readonly IMediaFileService _mediaFileService = mediaFileService;
+    private readonly ILogger<MoviesController> _logger = logger;
 
     [HttpGet]
     public async Task<ActionResult<List<MovieDto>>> GetMovies([FromQuery] string? libraryId = null)

@@ -9,7 +9,7 @@ public class Movie
     public string? OriginalTitle { get; set; }                // 原始标题
     public string? Studio { get; set; }                      // 制片公司/工作室
     public string? Maker { get; set; }                       // 制作商
-    public DateTime? ReleaseDate { get; set; }                // 上映日期
+    public string? ReleaseDate { get; set; }                // 上映日期
     public int? Runtime { get; set; }                       // 时长(分钟)
     public decimal? Rating { get; set; }                     // 评分
     public string? Overview { get; set; }                     // 简介

@@ -62,7 +62,7 @@ public class MetadataService(ILogger<MetadataService> logger) : IMetadataService
                 Plot = GetElementValue(root, "plot") ?? GetElementValue(root, "outline"),
                 Studios = GetElementValue(root, "studio"),
                 Year = ParseInt(GetElementValue(root, "year")),
-                Premiered = ParseDate(GetElementValue(root, "premiered") ?? GetElementValue(root, "releasedate") ?? GetElementValue(root, "release")),
+                Premiered = GetElementValue(root, "premiered") ?? GetElementValue(root, "releasedate") ?? GetElementValue(root, "release"),
                 Genre = GetConcatenatedElementValues(root, "genre"),
                 Tags = GetConcatenatedElementValues(root, "tag")
             };
