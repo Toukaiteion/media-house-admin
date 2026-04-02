@@ -19,5 +19,4 @@ public class TVShow
     // Navigation properties
     public MediaLibrary MediaLibrary { get; set; } = null!;
     public ICollection<Season> Seasons { get; set; } = [];
-    public NfoMetadata? Metadata { get; set; }
 }

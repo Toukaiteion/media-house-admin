@@ -45,7 +45,7 @@ DROP TABLE IF EXISTS movies;
 CREATE TABLE movies (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     library_id INTEGER NOT NULL,
-	media_item INTEGER NOT NULL,
+	media_item_id INTEGER NOT NULL,
     num VARCHAR(64),                          -- 编号/排序号
     studio VARCHAR(255),                  -- 制片公司/工作室
     marker VARCHAR(100),                 -- 制作公司
@@ -111,12 +111,12 @@ CREATE TABLE episodes (
 -- ==============================
 -- 6. 媒体文件（电影/季/集 都对应一个文件）
 -- ==============================
-DROP TABLE IF EXISTS media_file;
-CREATE TABLE media_file (
+DROP TABLE IF EXISTS media_files;
+CREATE TABLE media_files (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     media_type VARCHAR(20) NOT NULL,     -- movie / episode
     media_id INTEGER NOT NULL,           -- 对应 movies 或 episodes 的ID
-    path VARCHAR(500) NOT NULL,          -- 文件路径
+    path VARCHAR(500) NOT NULL UNIQUE,          -- 文件路径
     file_name VARCHAR(255) NOT NULL,
     extension VARCHAR(10),
     container VARCHAR(20),               -- mkv, mp4...
@@ -136,9 +136,11 @@ CREATE TABLE media_file (
 DROP TABLE IF EXISTS media_imgs;
 CREATE TABLE media_imgs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+	media_type VARCHAR(20) NOT NULL,     -- movie / episode
+    media_id INTEGER NOT NULL,           -- 对应 movies 或 episodes 的ID
     url_name VARCHAR(128) NOT NULL,     -- 例如 p300111.jpg
-    name INTEGER NOT NULL,           -- 对应 movies 或 episodes 的ID
-    path VARCHAR(500) NOT NULL,          -- 文件路径
+    name VARCHAR(128) NOT NULL,           -- 对应 movies 或 episodes 的ID
+    path VARCHAR(500) NOT NULL UNIQUE,          -- 文件路径
     file_name VARCHAR(255) NOT NULL,
     extension VARCHAR(10),           -- mkv, mp4...
     type VARCHAR(20),                -- poster、thumb、fanart  
@@ -157,9 +159,16 @@ CREATE TABLE media_tags (
 	lib_id INTEGER NOT NULL,
     media_type VARCHAR(20) NOT NULL,
     media_id INTEGER NOT NULL,
-    tag_name VARCHAR(50) NOT NULL,
+    tag_id INTEGER NOT NULL,
     create_time TIMESTAMP DEFAULT (datetime('now','localtime')),
-	PRIMARY KEY('lib_id', 'tag_name')
+	PRIMARY KEY('lib_id', 'media_id', 'tag_id')
+);
+
+DROP TABLE IF EXISTS tags;
+CREATE TABLE tags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tag_name VARCHAR(50) NOT NULL,
+    create_time TIMESTAMP DEFAULT (datetime('now','localtime'))
 );
 
 -- ==============================
@@ -233,4 +242,18 @@ CREATE TABLE media_staff (
     sort_order INTEGER DEFAULT 0,        -- 排序（主演靠前）
     create_time TIMESTAMP DEFAULT (datetime('now','localtime')),
     update_time TIMESTAMP DEFAULT (datetime('now','localtime'))
+);
+
+DROP TABLE IF EXISTS system_sync_logs;
+CREATE TABLE system_sync_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    media_library_id int NOT NULL,    
+    sync_type VARCHAR(64) NOT NULL,          
+    status VARCHAR(64) NOT NULL,         
+    added_count INTEGER, 
+	updated_count INTEGER,
+    deleted_count INTEGER,
+    error_message VARCHAR(1024),	
+    start_time TIMESTAMP DEFAULT (datetime('now','localtime')),
+    end_time TIMESTAMP DEFAULT (datetime('now','localtime'))
 );

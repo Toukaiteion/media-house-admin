@@ -9,8 +9,8 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
 {
     private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
     private readonly ILogger<ScanService> _logger = logger;
-    private readonly MediaHouseDbContext _context = context;
     private readonly IMetadataService _metadataService = metadataService;
+    private readonly MediaHouseDbContext _context = context;
 
     private static readonly string[] VideoExtensions = [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm"];
 
@@ -22,7 +22,6 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
         var library = await context.MediaLibraries.FindAsync(libraryId) ??
             throw new InvalidOperationException($"Library {libraryId} not found");
 
-        // Update library status
         library.Status = ScanStatus.Scanning;
         await context.SaveChangesAsync();
 
@@ -37,10 +36,70 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
         context.SystemSyncLogs.Add(log);
         await context.SaveChangesAsync();
 
-        // Launch background task
         _ = Task.Run(() => ExecuteFullScanAsync(libraryId, library.Path), CancellationToken.None);
 
         return log;
+    }
+
+    public async Task<SystemSyncLog> StartIncrementalScanAsync(int libraryId)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var _context = scope.ServiceProvider.GetRequiredService<MediaHouseDbContext>();
+
+        var library = await _context.MediaLibraries.FindAsync(libraryId);
+        if (library == null)
+            throw new InvalidOperationException($"Library {libraryId} not found");
+
+        var log = new SystemSyncLog
+        {
+            MediaLibraryId = libraryId,
+            SyncType = SyncType.IncrementalScan,
+            Status = SyncStatus.Started,
+            StartTime = DateTime.UtcNow
+        };
+
+        _context.SystemSyncLogs.Add(log);
+        await _context.SaveChangesAsync();
+
+        try
+        {
+            log.Status = SyncStatus.InProgress;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Starting incremental scan for library {LibraryId}", libraryId);
+
+            log.Status = SyncStatus.Completed;
+            log.EndTime = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Incremental scan failed for library {LibraryId}", libraryId);
+            log.Status = SyncStatus.Failed;
+            log.ErrorMessage = ex.Message;
+            log.EndTime = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            throw;
+        }
+
+        return log;
+    }
+
+    public async Task<SystemSyncLog?> GetLatestScanLogAsync(int libraryId)
+    {
+        return await _context.SystemSyncLogs
+            .Where(sl => sl.MediaLibraryId == libraryId)
+            .OrderByDescending(sl => sl.StartTime)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<List<SystemSyncLog>> GetScanLogsAsync(int libraryId, int limit = 10)
+    {
+        return await _context.SystemSyncLogs
+            .Where(sl => sl.MediaLibraryId == libraryId)
+            .OrderByDescending(sl => sl.StartTime)
+            .Take(limit)
+            .ToListAsync();
     }
 
     private async Task ExecuteFullScanAsync(int libraryId, string libraryPath)
@@ -57,7 +116,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
 
             if (log == null)
             {
-                _logger.LogWarning("No pending scan log found for library {LibraryId}", libraryId);
+                _logger.LogWarning("No pending scan log found for {LibraryId}", libraryId);
                 return;
             }
 
@@ -77,7 +136,6 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
 
             _logger.LogInformation("Starting full scan for library {LibraryId} at {Path}", libraryId, libraryPath);
 
-            // Get all movie directories
             var movieDirectories = GetMovieDirectories(libraryPath);
             _logger.LogInformation("Found {Count} movie directories) to scan", movieDirectories.Count);
 
@@ -124,67 +182,6 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
         }
     }
 
-    public async Task<SystemSyncLog> StartIncrementalScanAsync(int libraryId)
-    {
-        using var scope = _scopeFactory.CreateScope();
-        var _context = scope.ServiceProvider.GetRequiredService<MediaHouseDbContext>();
-        var library = await _context.MediaLibraries.FindAsync(libraryId);
-        if (library == null)
-            throw new InvalidOperationException($"Library {libraryId} not found");
-
-        var log = new SystemSyncLog
-        {
-            MediaLibraryId = libraryId,
-            SyncType = SyncType.IncrementalScan,
-            Status = SyncStatus.Started,
-            StartTime = DateTime.UtcNow
-        };
-
-        _context.SystemSyncLogs.Add(log);
-        await _context.SaveChangesAsync();
-
-        try
-        {
-            log.Status = SyncStatus.InProgress;
-            await _context.SaveChangesAsync();
-
-            // TODO: Implement incremental scan logic
-            _logger.LogInformation("Starting incremental scan for library {LibraryId}", libraryId);
-
-            log.Status = SyncStatus.Completed;
-            log.EndTime = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Incremental scan failed for library {LibraryId}", libraryId);
-            log.Status = SyncStatus.Failed;
-            log.ErrorMessage = ex.Message;
-            log.EndTime = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-            throw;
-        }
-
-        return log;
-    }
-
-    public async Task<SystemSyncLog?> GetLatestScanLogAsync(int libraryId)
-    {
-        return await _context.SystemSyncLogs
-            .Where(sl => sl.MediaLibraryId == libraryId)
-            .OrderByDescending(sl => sl.StartTime)
-            .FirstOrDefaultAsync();
-    }
-
-    public async Task<List<SystemSyncLog>> GetScanLogsAsync(int libraryId, int limit = 10)
-    {
-        return await _context.SystemSyncLogs
-            .Where(sl => sl.MediaLibraryId == libraryId)
-            .OrderByDescending(sl => sl.StartTime)
-            .Take(limit)
-            .ToListAsync();
-    }
-
     private List<string[]> GetMovieDirectories(string libraryPath)
     {
         var movieDirs = new List<string[]>();
@@ -212,14 +209,12 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
         if (!Directory.Exists(directoryPath))
             return false;
 
-        // Check for video files
         var files = Directory.GetFiles(directoryPath);
         var hasVideoFile = files.Any(f => VideoExtensions.Contains(Path.GetExtension(f).ToLower()));
 
         if (hasVideoFile)
             return true;
 
-        // Check for NFO file
         var hasNfoFile = files.Any(f => f.EndsWith(".nfo", StringComparison.OrdinalIgnoreCase));
 
         return hasNfoFile;
@@ -258,183 +253,270 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
 
         var parseResult = nfoFile != null ? await _metadataService.ParseNfoFileFullAsync(nfoFile) : null;
 
-        // Determine movie identifier: prefer num field from NFO, fallback to folder name
         var movieIdentifier = parseResult?.Num ?? movieDirName;
 
-        // Check if movie already exists
-        var existingMovie = await context.Movies
-            .Include(m => m.Metadata)
-            .Include(m => m.MediaFile)
-            .Include(m => m.MediaLibrary)
-            .FirstOrDefaultAsync(m => m.MediaLibraryId == libraryId && (m.Title == movieIdentifier || m.Title == movieDirName || m.Num == movieIdentifier));
+        await ProcessMediaItemAsync(context, libraryId, libraryPath, movieDirName, movieDirPath, movieIdentifier, parseResult, log);
+    }
 
-        if (existingMovie != null)
+    private async Task ProcessMediaItemAsync(MediaHouseDbContext context, int libraryId, string libraryPath, string movieDirName, string movieDirPath, string movieIdentifier, NfoParseResult? parseResult, SystemSyncLog log)
+    {
+        // Create or update MediaItem (base media info)
+        var existingMediaItem = await context.MediaItems
+            .FirstOrDefaultAsync(mi => mi.LibraryId == libraryId && (mi.Name == movieIdentifier || mi.Title == movieIdentifier));
+
+        MediaItem mediaItem;
+        if (existingMediaItem == null)
         {
-            // Update existing movie
-            _logger.LogInformation("Updating existing movie: {Title}", existingMovie.Title);
+            _logger.LogInformation("Creating new media item: {Identifier}", movieIdentifier);
 
-            if (parseResult != null)
+            mediaItem = new MediaItem
             {
-                existingMovie.Title = parseResult.Metadata.Title ?? existingMovie.Title;
-                existingMovie.Runtime = parseResult.Runtime ?? existingMovie.Runtime;
-                existingMovie.Overview = parseResult.Metadata.Plot ?? existingMovie.Overview;
+                LibraryId = libraryId,
+                Name = movieIdentifier,
+                Title = parseResult?.Title ?? movieIdentifier,
+                OriginalTitle = parseResult?.Title ?? movieIdentifier,
+                Type = "movie",
+                ReleaseDate = parseResult?.Premiered,
+                Summary = parseResult?.Summary,
+                PosterPath = parseResult?.ImagePaths?.ContainsKey("poster") == true ? Path.Combine(libraryPath, movieDirName, parseResult.ImagePaths["poster"]) : null,
+                ThumbPath = parseResult?.ImagePaths?.ContainsKey("thumb") == true ? Path.Combine(libraryPath, movieDirName, parseResult.ImagePaths["thumb"]) : null,
+                FanartPath = parseResult?.ImagePaths?.ContainsKey("fanart") == true ? Path.Combine(libraryPath, movieDirName, parseResult.ImagePaths["fanart"]) : null,
+                CreateTime = DateTime.UtcNow,
+                UpdateTime = DateTime.UtcNow
+            };
 
-                if (!string.IsNullOrEmpty(parseResult.Metadata.Premiered))
-                {
-                    existingMovie.ReleaseDate = parseResult.Metadata.Premiered;
-                }
-
-                if (parseResult.Metadata.Studios != null)
-                {
-                    existingMovie.Studio = parseResult.Metadata.Studios;
-                }
-
-                if (!string.IsNullOrEmpty(parseResult.Maker))
-                {
-                    existingMovie.Maker = parseResult.Maker;
-                }
-
-                // Update image paths
-                if (parseResult.ImagePaths.ContainsKey("poster") && !string.IsNullOrEmpty(parseResult.ImagePaths["poster"]))
-                {
-                    existingMovie.PosterPath = Path.Combine(libraryPath, movieDirName, parseResult.ImagePaths["poster"]);
-                }
-
-                if (parseResult.ImagePaths.ContainsKey("thumb") && !string.IsNullOrEmpty(parseResult.ImagePaths["thumb"]))
-                {
-                    existingMovie.ThumbPath = Path.Combine(libraryPath, movieDirName, parseResult.ImagePaths["thumb"]);
-                }
-
-                if (parseResult.ImagePaths.ContainsKey("fanart") && !string.IsNullOrEmpty(parseResult.ImagePaths["fanart"]))
-                {
-                    existingMovie.FanartPath = Path.Combine(libraryPath, movieDirName, parseResult.ImagePaths["fanart"]);
-                }
-
-                // Check for extrafanart folder
-                var extrafanartPath = Path.Combine(libraryPath, movieDirName, "extrafanart");
-                if (Directory.Exists(extrafanartPath))
-                {
-                    existingMovie.ScreenshotsPath = extrafanartPath;
-                }
-            }
-
-            existingMovie.UpdatedAt = DateTime.UtcNow;
-            log.UpdatedCount++;
-
-            // Update metadata
-            if (existingMovie.Metadata != null && parseResult != null)
-            {
-                existingMovie.Metadata.Genre = parseResult.Metadata.Genre ?? existingMovie.Metadata.Genre;
-                existingMovie.Metadata.Tags = parseResult.Metadata.Tags ?? existingMovie.Metadata.Tags;
-            }
-            context.Movies.Update(existingMovie);
+            context.MediaItems.Add(mediaItem);
+            log.AddedCount++;
         }
         else
         {
-            // Create new movie
+            _logger.LogInformation("Updating existing media item: {Identifier}", movieIdentifier);
+
+            if (parseResult != null)
+            {
+                existingMediaItem.Title = parseResult.Title ?? existingMediaItem.Title;
+                existingMediaItem.OriginalTitle = parseResult.Title ?? existingMediaItem.OriginalTitle;
+                existingMediaItem.ReleaseDate = parseResult.Premiered ?? existingMediaItem.ReleaseDate;
+                existingMediaItem.Summary = parseResult.Summary ?? existingMediaItem.Summary;
+
+                var PosterPath = parseResult.ImagePaths?.ContainsKey("poster") == true ? parseResult.ImagePaths["poster"] : "";
+                if (!string.IsNullOrEmpty(PosterPath))
+                {
+                    existingMediaItem.PosterPath = Path.Combine(libraryPath, movieDirName,  PosterPath);
+                }
+
+                var ThumbPath = parseResult.ImagePaths?.ContainsKey("thumb") == true ? parseResult.ImagePaths["thumb"] : "";
+                if (!string.IsNullOrEmpty(ThumbPath))
+                {
+                    existingMediaItem.ThumbPath = Path.Combine(libraryPath, movieDirName, ThumbPath);
+                }
+
+                var FanartPath = parseResult.ImagePaths?.ContainsKey("fanart") == true ? parseResult.ImagePaths["fanart"] : "";
+                if (!string.IsNullOrEmpty(FanartPath))
+                {
+                    existingMediaItem.FanartPath = Path.Combine(libraryPath, movieDirName, FanartPath);
+                }
+
+                existingMediaItem.UpdateTime = DateTime.UtcNow;
+                mediaItem = existingMediaItem;
+            }
+
+            context.MediaItems.Update(existingMediaItem);
+            log.UpdatedCount++;
+        }
+
+        await context.SaveChangesAsync();
+
+        existingMediaItem = await context.MediaItems
+            .FirstOrDefaultAsync(mi => mi.LibraryId == libraryId && (mi.Name == movieIdentifier || mi.Title == movieIdentifier));
+
+        // Create or update Movie (detailed info for movies)
+        await ProcessMovieAsync(context, libraryId, movieIdentifier, parseResult, log, existingMediaItem.Id);
+    }
+
+    private async Task ProcessMovieAsync(MediaHouseDbContext context, int libraryId, string movieIdentifier, NfoParseResult? parseResult, SystemSyncLog log, int mediaItemId)
+    {
+        var existingMovie = await context.Movies
+            .Include(m => m.MediaFile)
+            .Include(m => m.MediaItem)
+            .FirstOrDefaultAsync(m => m.Num == movieIdentifier);
+
+        if (existingMovie != null)
+        {
             _logger.LogInformation("Creating new movie: {Identifier}", movieIdentifier);
 
             var movie = new Movie
             {
                 MediaLibraryId = libraryId,
-                Title = parseResult?.Metadata.Title ?? movieIdentifier,
                 Num = parseResult?.Num,
-                Runtime = parseResult?.Runtime,
-                Overview = parseResult?.Metadata.Plot,
-                Studio = parseResult?.Metadata.Studios,
+                Title = parseResult?.Title ?? movieIdentifier,
+                Studio = parseResult?.Studios,
                 Maker = parseResult?.Maker,
+                Runtime = parseResult?.Runtime,
+                Overview = parseResult?.Summary,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
-            if (!string.IsNullOrEmpty(parseResult?.Metadata.Premiered))
+            if (!string.IsNullOrEmpty(parseResult?.Premiered))
             {
-                movie.ReleaseDate = parseResult.Metadata.Premiered;
+                movie.ReleaseDate = parseResult.Premiered;
             }
-
-            // Set image paths
-            if (parseResult != null)
-            {
-                if (!string.IsNullOrEmpty(parseResult.ImagePaths["poster"]))
-                {
-                    movie.PosterPath = Path.Combine(libraryPath, movieDirName, parseResult.ImagePaths["poster"]);
-                }
-
-                if (!string.IsNullOrEmpty(parseResult.ImagePaths["thumb"]))
-                {
-                    movie.ThumbPath = Path.Combine(libraryPath, movieDirName, parseResult.ImagePaths["thumb"]);
-                }
-
-                if (!string.IsNullOrEmpty(parseResult.ImagePaths["fanart"]))
-                {
-                    movie.FanartPath = Path.Combine(libraryPath, movieDirName, parseResult.ImagePaths["fanart"]);
-                }
-
-                // Check for extrafanart folder
-                var extrafanartPath = Path.Combine(libraryPath, movieDirName, "extrafanart");
-                if (Directory.Exists(extrafanartPath))
-                {
-                    movie.ScreenshotsPath = extrafanartPath;
-                }
-            }
-
-            // Create NfoMetadata
-            if (parseResult != null)
-            {
-                var metadata = parseResult.Metadata;
-                metadata.MovieId = movie.Id;
-                movie.Metadata = metadata;
-                context.NfoMetadata.Add(metadata);
-            }
-
-            // Create MediaFile
-            var fileInfo = new FileInfo(videoFile);
-            var mediaFile = new MediaFile
-            {
-                MediaType = MediaType.Movie,
-                MediaId = movie.Id,
-                MovieId = movie.Id,
-                Path = videoFile,
-                FileName = fileInfo.Name,
-                Extension = fileInfo.Extension,
-                SizeBytes = fileInfo.Length,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            movie.MediaFile = mediaFile;
 
             context.Movies.Add(movie);
             log.AddedCount++;
+        }
+        else
+        {
+            _logger.LogInformation("Updating existing movie: {Identifier}", movieIdentifier);
 
-            // Create tags
-            if (parseResult?.Metadata?.Tags != null)
+            if (parseResult != null)
             {
-                var tagList = parseResult.Metadata?.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-                if (tagList != null && tagList.Any())
+                existingMovie.Title = parseResult.Title ?? existingMovie.Title;
+                existingMovie.Studio = parseResult?.Studios ?? existingMovie.Studio;
+                existingMovie.Maker = parseResult?.Maker ?? existingMovie.Maker;
+                existingMovie.Runtime = parseResult.Runtime ?? existingMovie.Runtime;
+                existingMovie.Overview = parseResult.Summary ?? existingMovie.Overview;
+
+                if (!string.IsNullOrEmpty(parseResult?.Premiered))
                 {
-                    await CreateTagsAsync(context, libraryId, movie.Id, tagList);
+                    existingMovie.ReleaseDate = parseResult.Premiered;
                 }
+
+                existingMovie.UpdatedAt = DateTime.UtcNow;
             }
 
-            if (parseResult?.Actors != null && parseResult.Actors.Count > 0)
+            context.Movies.Update(existingMovie);
+            log.UpdatedCount++;
+        }
+
+        await context.SaveChangesAsync();
+
+        // Link movie to media item
+        await LinkMovieToMediaItemAsync(context, movieIdentifier, mediaItemId);
+
+        // Create MediaFile
+        await CreateMovieMediaFileAsync(context, libraryId, movieIdentifier, parseResult, log);
+
+        // Create tags
+        if (parseResult?.Tags != null)
+        {
+            await CreateMovieTagsAsync(context, libraryId, movieIdentifier, parseResult.Tags);
+        }
+
+        // Create actors and MediaStaff
+        if (parseResult?.Actors != null && parseResult.Actors.Count > 0)
+        {
+            await CreateMovieActorsAsync(context, libraryId, movieIdentifier, parseResult.Actors);
+        }
+    }
+
+    private async Task LinkMovieToMediaItemAsync(MediaHouseDbContext context, string movieIdentifier, int mediaItemId)
+    {
+        var mediaItem = await context.MediaItems.FindAsync(mediaItemId);
+        var movie = await context.Movies.FirstOrDefaultAsync(m => m.Num == movieIdentifier);
+
+        if (mediaItem != null && movie != null)
+        {
+            var existingMediaItemFromDb = await context.MediaItems
+                .IncludeAsSplit()
+                    .ThenInclude(mi => mi.Movies)
+                    .FirstOrDefaultAsync(mi => mi.Id == mediaItemId);
+
+            if (existingMediaItemFromDb != null)
             {
-                foreach (var actorName in parseResult.Actors)
-                {
-                    var staff = await GetOrCreateStaffAsync(context, actorName);
-
-                    var mediaStaff = new MediaStaff
-                    {
-                        MediaType = MediaStaffType.Movie,
-                        MediaId = movie.Id,
-                        StaffId = staff.Id,
-                        RoleType = RoleType.Actor,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-
-                    context.MediaStaffs.Add(mediaStaff);
-                }
+                existingMediaItemFromDb.Movies.Add(movie);
             }
+        }
+    }
+
+    private async Task CreateMovieMediaFileAsync(MediaHouseDbContext context, int libraryId, string movieIdentifier, NfoParseResult? parseResult, SystemSyncLog log)
+    {
+        var movie = await context.Movies.FirstOrDefaultAsync(m => m.Num == movieIdentifier);
+        if (movie == null)
+        {
+            _logger.LogWarning("Movie not found after media item creation: {Identifier}", movieIdentifier);
+            return;
+        }
+
+        var videoFile = parseResult?.VideoFile ?? ""; // TODO: Get actual video file path
+        var fileInfo = new FileInfo(videoFile);
+
+        var mediaFile = new MediaFile
+        {
+            MediaType = MediaType.Movie,
+            MediaId = movie.Id,
+            MovieId = movie.Id,
+            Path = videoFile,
+            FileName = fileInfo.Name,
+            Extension = fileInfo.Extension,
+            SizeBytes = fileInfo.Length,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        context.MediaFiles.Add(mediaFile);
+    }
+
+    private async Task CreateMovieTagsAsync(MediaHouseDbContext context, int libraryId, string movieIdentifier, string tags)
+    {
+        var movie = await context.Movies.FirstOrDefaultAsync(m => m.Num == movieIdentifier);
+        if (movie == null)
+        {
+            _logger.LogWarning("Movie not found when creating tags: {Identifier}", movieIdentifier);
+            return;
+        }
+
+        var tagList = tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        foreach (var tagName in tagList)
+        {
+            if (string.IsNullOrWhiteSpace(tagName))
+                continue;
+
+            var trimmedTagName = tagName.Trim();
+
+            var existingTag = await context.MediaTags
+                .FirstOrDefaultAsync(t => t.LibraryId == libraryId && t.TagName == trimmedTagName);
+
+            if (existingTag == null)
+            {
+                var mediaTag = new MediaTag
+                {
+                    LibraryId = libraryId,
+                    MediaType = MediaType.Movie,
+                    MediaId = movie.Id,
+                    TagName = trimmedTagName,
+                    CreatedAt = DateTime.UtcNow
+                };
+                context.MediaTags.Add(mediaTag);
+            }
+        }
+    }
+
+    private async Task CreateMovieActorsAsync(MediaHouseDbContext context, int libraryId, string movieIdentifier, List<string> actors)
+    {
+        var movie = await context.Movies.FirstOrDefaultAsync(m => m.Num == movieIdentifier);
+        if (movie == null)
+        {
+            _logger.LogWarning("Movie not found when creating actors: {Identifier}", movieIdentifier);
+            return;
+        }
+
+        foreach (var actorName in actors)
+        {
+            var staff = await GetOrCreateStaffAsync(context, actorName);
+
+            var mediaStaff = new MediaStaff
+            {
+                MediaType = MediaStaffType.Movie,
+                MediaId = movie.Id,
+                StaffId = staff.Id,
+                RoleType = RoleType.Actor,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            context.MediaStaffs.Add(mediaStaff);
         }
     }
 
@@ -455,32 +537,4 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
 
         return staff;
     }
-
-    private async Task CreateTagsAsync(MediaHouseDbContext context, int libraryId, int movieId, List<string> tagNames)
-    {
-        foreach (var tagName in tagNames)
-        {
-            if (string.IsNullOrWhiteSpace(tagName))
-                continue;
-
-            var trimmedTagName = tagName.Trim();
-
-            var existingTag = await context.MediaTags
-                .FirstOrDefaultAsync(t => t.MediaLibraryId == libraryId && t.TagName == trimmedTagName);
-
-            if (existingTag == null)
-            {
-                var mediaTag = new MediaTag
-                {
-                    MediaLibraryId = libraryId,
-                    MediaType = MediaType.Movie,
-                    MediaId = movieId,
-                    TagName = trimmedTagName,
-                    CreatedAt = DateTime.UtcNow
-                };
-                context.MediaTags.Add(mediaTag);
-            }
-        }
-    }
-
 }

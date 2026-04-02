@@ -10,7 +10,6 @@ public class TVShowRepository(MediaHouseDbContext context, ILogger<TVShowReposit
     {
         return await _dbSet
             .Include(t => t.Seasons)
-            .Include(t => t.Metadata)
             .Where(t => t.MediaLibraryId == libraryId && !t.IsDeleted)
             .OrderBy(t => t.Title)
             .ToListAsync();
@@ -20,7 +19,6 @@ public class TVShowRepository(MediaHouseDbContext context, ILogger<TVShowReposit
     {
         return await _dbSet
             .Include(t => t.Seasons)
-            .Include(t => t.Metadata)
             .FirstOrDefaultAsync(t => t.Title == title && !t.IsDeleted);
     }
 

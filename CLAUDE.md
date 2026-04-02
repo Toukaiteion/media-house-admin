@@ -93,3 +93,39 @@ Key NuGet packages:
 - NFO file parsing and media metadata extraction are stub implementations
 - File system scanning logic is partially implemented
 - Database is initialized on application startup via DatabaseService.InitializeDatabaseAsync()
+
+## Docker Support
+
+The project can be containerized using the included Dockerfile:
+
+```bash
+# Build the Docker image
+docker build -t media-house-admin .
+
+# Run the container
+docker run -p 5000:5000 media-house-admin
+```
+
+## Database Initialization
+
+The database is initialized on application startup via `DatabaseService.InitializeDatabaseAsync()`.
+The `db_init.sql` file contains SQL scripts for manual database setup if needed.
+Database file location: `media-house-admin/mediahouse.db`
+
+To manually reset the database:
+1. Stop the application
+2. Delete `mediahouse.db`
+3. Restart the application (it will auto-initialize)
+
+## Service Registration
+
+Services are registered in `Program.cs` using dependency injection:
+- Scoped services (e.g., LibraryService, ScanService) for per-request lifetime
+- Singleton services (e.g., QuartzService) for application lifetime
+- Hosted services (e.g., QuartzService) for background processing
+
+## Testing
+
+The project does not currently have an automated test suite. Consider adding tests using:
+- xUnit or NUnit for unit tests
+- Microsoft.AspNetCore.Mvc.Testing for integration tests

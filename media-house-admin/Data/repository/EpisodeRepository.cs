@@ -10,7 +10,6 @@ public class EpisodeRepository(MediaHouseDbContext context, ILogger<EpisodeRepos
     {
         return await _dbSet
             .Include(e => e.MediaFile)
-            .Include(e => e.Metadata)
             .Where(e => e.SeasonId == seasonId && !e.IsDeleted)
             .OrderBy(e => e.EpisodeNumber)
             .ToListAsync();
@@ -31,7 +30,6 @@ public class EpisodeRepository(MediaHouseDbContext context, ILogger<EpisodeRepos
     {
         return await _dbSet
             .Include(e => e.MediaFile)
-            .Include(e => e.Metadata)
             .FirstOrDefaultAsync(e => e.SeasonId == seasonId && e.EpisodeNumber == episodeNumber && !e.IsDeleted);
     }
 }

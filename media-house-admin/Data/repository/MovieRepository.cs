@@ -10,7 +10,6 @@ public class MovieRepository(MediaHouseDbContext context, ILogger<MovieRepositor
     {
         return await _dbSet
             .Include(m => m.MediaFile)
-            .Include(m => m.Metadata)
             .Where(m => m.MediaLibraryId == libraryId && !m.IsDeleted)
             .OrderBy(m => m.Num)
             .ToListAsync();
@@ -20,7 +19,6 @@ public class MovieRepository(MediaHouseDbContext context, ILogger<MovieRepositor
     {
         return await _dbSet
             .Include(m => m.MediaFile)
-            .Include(m => m.Metadata)
             .FirstOrDefaultAsync(m => m.Title == title && !m.IsDeleted);
     }
 

@@ -18,5 +18,4 @@ public class Episode
     public TVShow TVShow { get; set; } = null!;
     public Season Season { get; set; } = null!;
     public MediaFile? MediaFile { get; set; }
-    public NfoMetadata? Metadata { get; set; }
 }

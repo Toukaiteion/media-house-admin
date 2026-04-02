@@ -11,7 +11,7 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
     public DbSet<Season> Seasons { get; set; }
     public DbSet<Episode> Episodes { get; set; }
     public DbSet<MediaFile> MediaFiles { get; set; }
-    public DbSet<NfoMetadata> NfoMetadata { get; set; }
+    public DbSet<MediaImgs> MediaImgs { get; set; }
     public DbSet<SystemSyncLog> SystemSyncLogs { get; set; }
     public DbSet<PlayRecord> PlayRecords { get; set; }
     public DbSet<AppUser> AppUsers { get; set; }
@@ -20,6 +20,7 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
     public DbSet<MyFavor> MyFavors { get; set; }
     public DbSet<MediaStaff> MediaStaffs { get; set; }
     public DbSet<MediaItem> MediaItems { get; set; }
+    public DbSet<Tag> Tags { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -27,6 +28,13 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
         modelBuilder.Entity<MediaLibrary>()
             .HasMany(m => m.MediaItems)
             .WithOne(mi => mi.Library)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // MediaItem -> Movie (1:1)
+        modelBuilder.Entity<MediaItem>()
+            .HasOne(mi => mi.Movie)
+            .WithOne(m => m.MediaItem)
+            .HasForeignKey<Movie>(m => m.MediaItemId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // TVShow -> Seasons
@@ -62,26 +70,19 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
             .HasForeignKey(mf => mf.EpisodeId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Movie -> NfoMetadata (one-to-one)
-        modelBuilder.Entity<NfoMetadata>()
-            .HasOne(nm => nm.Movie)
-            .WithMany()
-            .HasForeignKey(nm => nm.MovieId)
+        // MediaImgs -> Movie relationship
+        modelBuilder.Entity<MediaImgs>()
+            .HasOne(mi => mi.Movie)
+            .WithMany(m => m.MediaImgs)
+            .HasForeignKey(mi => mi.MediaId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // TVShow -> NfoMetadata (one-to-one)
-        modelBuilder.Entity<NfoMetadata>()
-            .HasOne(nm => nm.TVShow)
+        // MediaImgs -> Episode relationship
+        modelBuilder.Entity<MediaImgs>()
+            .HasOne(mi => mi.Episode)
             .WithMany()
-            .HasForeignKey(nm => nm.TVShowId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // Episode -> NfoMetadata (one-to-one)
-        modelBuilder.Entity<NfoMetadata>()
-            .HasOne(nm => nm.Episode)
-            .WithMany()
-            .HasForeignKey(nm => nm.EpisodeId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .HasForeignKey(mi => mi.MediaId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // SystemSyncLog -> MediaLibrary
         modelBuilder.Entity<SystemSyncLog>()
@@ -128,6 +129,13 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
             .HasForeignKey(t => t.MediaLibraryId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // MediaTag -> Tag relationship
+        modelBuilder.Entity<MediaTag>()
+            .HasOne(mt => mt.Tag)
+            .WithMany(t => t.MediaTags)
+            .HasForeignKey(mt => mt.TagId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // MediaStaff -> Staff
         modelBuilder.Entity<MediaStaff>()
             .HasOne(ms => ms.Staff)
@@ -150,9 +158,9 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
             .HasIndex(u => u.Username)
             .IsUnique();
 
+        // Composite key for MediaTag - matches SQL (lib_id, media_id, tag_id)
         modelBuilder.Entity<MediaTag>()
-            .HasIndex(t => new { t.MediaLibraryId, t.TagName })
-            .IsUnique();
+            .HasKey(t => new { t.MediaLibraryId, t.MediaId, t.TagId });
 
         // Enum conversions
         modelBuilder.Entity<MediaLibrary>()
@@ -180,9 +188,6 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
             .HasConversion<string>();
 
         modelBuilder.Entity<MediaTag>()
-            .HasKey(t => new { t.MediaLibraryId, t.TagName });
-
-        modelBuilder.Entity<MediaTag>()
             .Property(t => t.MediaType)
             .HasConversion<string>();
 
@@ -192,6 +197,14 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
 
         modelBuilder.Entity<MediaStaff>()
             .Property(ms => ms.RoleType)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<MediaImgs>()
+            .Property(mi => mi.MediaType)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<MediaImgs>()
+            .Property(mi => mi.Type)
             .HasConversion<string>();
 
         modelBuilder.Entity<Staff>()
