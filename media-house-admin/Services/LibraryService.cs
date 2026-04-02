@@ -19,7 +19,7 @@ public class LibraryService(MediaHouseDbContext context, ILogger<LibraryService>
     public async Task<MediaLibrary?> GetLibraryByIdAsync(int id)
     {
         return await _context.MediaLibraries
-            .Include(l => l.MediaItems)
+            .Include(l => l.Medias)
             .FirstOrDefaultAsync(l => l.Id == id);
     }
 

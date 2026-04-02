@@ -23,9 +23,6 @@ builder.Services.AddScoped<DatabaseService>();
 // Register repositories
 builder.Services.AddScoped<IMediaLibraryRepository, MediaLibraryRepository>();
 builder.Services.AddScoped<IMovieRepository, MovieRepository>();
-builder.Services.AddScoped<ITVShowRepository, TVShowRepository>();
-builder.Services.AddScoped<ISeasonRepository, SeasonRepository>();
-builder.Services.AddScoped<IEpisodeRepository, EpisodeRepository>();
 builder.Services.AddScoped<IAppUserRepository, AppUserRepository>();
 builder.Services.AddScoped<IPlayRecordRepository, PlayRecordRepository>();
 

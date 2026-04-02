@@ -1,5 +1,3 @@
-using MediaHouse.Data.Entities;
-
 namespace MediaHouse.DTOs;
 
 public class PlayRecordUrlDto
@@ -14,7 +12,6 @@ public class PlayRecordDto
     public int Id { get; set; }
     public int UserId { get; set; }
     public int MediaLibraryId { get; set; }
-    public MediaType MediaType { get; set; }
     public int MediaId { get; set; }
     public long PositionMs { get; set; }
     public bool IsFinished { get; set; }
@@ -27,7 +24,6 @@ public class UpdatePlayRecordDto
 {
     public int UserId { get; set; }
     public int MediaLibraryId { get; set; }
-    public MediaType MediaType { get; set; }
     public int MediaId { get; set; }
     public double PositionSeconds { get; set; }
 }

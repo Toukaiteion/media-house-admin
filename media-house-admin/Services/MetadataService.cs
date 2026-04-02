@@ -85,14 +85,14 @@ public class MetadataService(ILogger<MetadataService> logger) : IMetadataService
         return parent.Element(elementName)?.Value?.Trim();
     }
 
-    private List<string> GetElementValues(XElement parent, string elementName, string subElementName)
+    private static List<string> GetElementValues(XElement parent, string elementName, string subElementName)
     {
         var values = parent.Elements(elementName)
             .Select(e => e.Element(subElementName)?.Value?.Trim())
             .Where(v => !string.IsNullOrEmpty(v))
             .ToList();
 
-        return values;
+        return values ?? [];
     }
 
     private string GetConcatenatedElementValues(XElement parent, string elementName)

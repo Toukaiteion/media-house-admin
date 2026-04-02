@@ -45,7 +45,7 @@ public class PlayRecordController : ControllerBase
     {
         try
         {
-            await _playRecordService.UpdatePlaybackProgressAsync(dto.UserId, dto.MediaLibraryId, dto.MediaType, dto.MediaId, dto.PositionSeconds);
+            await _playRecordService.UpdatePlaybackProgressAsync(dto.UserId, dto.MediaLibraryId, dto.MediaId, dto.PositionSeconds);
             return Ok(new { message = "Progress updated" });
         }
         catch (Exception ex)
@@ -60,7 +60,7 @@ public class PlayRecordController : ControllerBase
     {
         try
         {
-            await _playRecordService.MarkAsCompletedAsync(dto.UserId, dto.MediaLibraryId, dto.MediaType, dto.MediaId);
+            await _playRecordService.MarkAsCompletedAsync(dto.UserId, dto.MediaLibraryId, dto.MediaId);
             return Ok(new { message = "Playback marked as completed" });
         }
         catch (Exception ex)
@@ -85,14 +85,13 @@ public class PlayRecordController : ControllerBase
         {
             Id = progress.Id,
             UserId = progress.UserId,
-            MediaLibraryId = progress.MediaLibraryId,
-            MediaType = progress.MediaType,
+            MediaLibraryId = progress.LibId,
             MediaId = progress.MediaId,
             PositionMs = progress.PositionMs,
             IsFinished = progress.IsFinished,
             LastPlayTime = progress.LastPlayTime,
-            CreatedAt = progress.CreatedAt,
-            UpdatedAt = progress.UpdatedAt
+            CreatedAt = progress.CreateTime,
+            UpdatedAt = progress.UpdateTime
         };
     }
 }

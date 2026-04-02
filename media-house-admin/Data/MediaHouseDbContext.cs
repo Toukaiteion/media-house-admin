@@ -7,9 +7,6 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
 {
     public DbSet<MediaLibrary> MediaLibraries { get; set; }
     public DbSet<Movie> Movies { get; set; }
-    public DbSet<TVShow> TVShows { get; set; }
-    public DbSet<Season> Seasons { get; set; }
-    public DbSet<Episode> Episodes { get; set; }
     public DbSet<MediaFile> MediaFiles { get; set; }
     public DbSet<MediaImgs> MediaImgs { get; set; }
     public DbSet<SystemSyncLog> SystemSyncLogs { get; set; }
@@ -19,70 +16,38 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
     public DbSet<MediaTag> MediaTags { get; set; }
     public DbSet<MyFavor> MyFavors { get; set; }
     public DbSet<MediaStaff> MediaStaffs { get; set; }
-    public DbSet<MediaItem> MediaItems { get; set; }
+    public DbSet<Media> Medias { get; set; }
     public DbSet<Tag> Tags { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // MediaLibrary -> MediaItems
+        // MediaLibrary -> Medias
         modelBuilder.Entity<MediaLibrary>()
-            .HasMany(m => m.MediaItems)
-            .WithOne(mi => mi.Library)
+            .HasMany(m => m.Medias)
+            .WithOne(m => m.Library)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // MediaItem -> Movie (1:1)
-        modelBuilder.Entity<MediaItem>()
-            .HasOne(mi => mi.Movie)
-            .WithOne(m => m.MediaItem)
-            .HasForeignKey<Movie>(m => m.MediaItemId)
-            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<MediaLibrary>()
+            .Property(m => m.Type)
+            .HasConversion<string>();
 
-        // TVShow -> Seasons
-        modelBuilder.Entity<TVShow>()
-            .HasMany(t => t.Seasons)
-            .WithOne(s => s.TVShow)
-            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<MediaLibrary>()
+            .Property(m => m.Status)
+            .HasConversion<string>();
 
-        // Season -> Episodes
-        modelBuilder.Entity<Season>()
-            .HasMany(s => s.Episodes)
-            .WithOne(e => e.Season)
+        // Media -> Movie (1:1)
+        modelBuilder.Entity<Movie>()
+            .HasOne(m => m.Media)
+            .WithOne(m => m.Movie)
+            .HasForeignKey<Movie>(m => m.MediaId)
             .OnDelete(DeleteBehavior.Cascade);
-
-        // Episode -> TVShow (for navigation)
-        modelBuilder.Entity<Episode>()
-            .HasOne(e => e.TVShow)
-            .WithMany()
-            .HasForeignKey(e => e.TVShowId)
-            .OnDelete(DeleteBehavior.Restrict);
 
         // Movie -> MediaFile (one-to-one via MovieId - legacy)
         modelBuilder.Entity<MediaFile>()
-            .HasOne(mf => mf.Movie)
-            .WithMany()
-            .HasForeignKey(mf => mf.MovieId)
+            .HasOne(mf => mf.Media)
+            .WithMany(m => m.MediaFiles)
+            .HasForeignKey(mf => mf.MediaId)
             .OnDelete(DeleteBehavior.Cascade);
-
-        // Episode -> MediaFile (one-to-one via EpisodeId - legacy)
-        modelBuilder.Entity<MediaFile>()
-            .HasOne(mf => mf.Episode)
-            .WithMany()
-            .HasForeignKey(mf => mf.EpisodeId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // MediaImgs -> Movie relationship
-        modelBuilder.Entity<MediaImgs>()
-            .HasOne(mi => mi.Movie)
-            .WithMany(m => m.MediaImgs)
-            .HasForeignKey(mi => mi.MediaId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // MediaImgs -> Episode relationship
-        modelBuilder.Entity<MediaImgs>()
-            .HasOne(mi => mi.Episode)
-            .WithMany()
-            .HasForeignKey(mi => mi.MediaId)
-            .OnDelete(DeleteBehavior.Restrict);
 
         // SystemSyncLog -> MediaLibrary
         modelBuilder.Entity<SystemSyncLog>()
@@ -90,43 +55,10 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
             .WithMany()
             .OnDelete(DeleteBehavior.Cascade);
 
-        // PlayRecord -> Movie (optional)
-        modelBuilder.Entity<PlayRecord>()
-            .HasOne(p => p.Movie)
-            .WithMany()
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // PlayRecord -> Episode (optional)
-        modelBuilder.Entity<PlayRecord>()
-            .HasOne(p => p.Episode)
-            .WithMany()
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // AppUser relationships
-        modelBuilder.Entity<AppUser>()
-            .HasMany(u => u.Favorites)
-            .WithOne(f => f.User)
-            .HasForeignKey(f => f.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
         modelBuilder.Entity<AppUser>()
             .HasMany(u => u.PlayRecords)
             .WithOne()
             .HasForeignKey(p => p.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // MyFavor -> MediaLibrary
-        modelBuilder.Entity<MyFavor>()
-            .HasOne(f => f.MediaLibrary)
-            .WithMany()
-            .HasForeignKey(f => f.MediaLibraryId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // MediaTag -> MediaLibrary
-        modelBuilder.Entity<MediaTag>()
-            .HasOne(t => t.MediaLibrary)
-            .WithMany()
-            .HasForeignKey(t => t.MediaLibraryId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // MediaTag -> Tag relationship
@@ -179,10 +111,6 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
             .Property(s => s.Status)
             .HasConversion<string>();
 
-        modelBuilder.Entity<MediaFile>()
-            .Property(mf => mf.MediaType)
-            .HasConversion<string>();
-
         modelBuilder.Entity<PlayRecord>()
             .Property(p => p.MediaType)
             .HasConversion<string>();
@@ -200,15 +128,19 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
             .HasConversion<string>();
 
         modelBuilder.Entity<MediaImgs>()
-            .Property(mi => mi.MediaType)
-            .HasConversion<string>();
-
-        modelBuilder.Entity<MediaImgs>()
             .Property(mi => mi.Type)
             .HasConversion<string>();
 
         modelBuilder.Entity<Staff>()
             .Property(s => s.Country)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<SystemSyncLog>()
+            .Property(t => t.SyncType)
+            .HasConversion<string>();
+            
+        modelBuilder.Entity<SystemSyncLog>()
+            .Property(t => t.Status)
             .HasConversion<string>();
     }
 }

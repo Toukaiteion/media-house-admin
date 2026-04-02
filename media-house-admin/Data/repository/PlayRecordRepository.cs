@@ -6,10 +6,10 @@ namespace MediaHouse.Data.repository;
 public class PlayRecordRepository(MediaHouseDbContext context, ILogger<PlayRecordRepository> logger)
     : Repository<PlayRecord>(context, logger), Interfaces.IPlayRecordRepository
 {
-    public async Task<PlayRecord?> GetByUserAndMediaAsync(int userId, MediaType mediaType, int mediaId)
+    public async Task<PlayRecord?> GetByUserAndMediaAsync(int userId, int mediaId)
     {
         return await _dbSet
-            .FirstOrDefaultAsync(pr => pr.UserId == userId && pr.MediaType == mediaType && pr.MediaId == mediaId);
+            .FirstOrDefaultAsync(pr => pr.UserId == userId && pr.MediaId == mediaId);
     }
 
     public async Task<List<PlayRecord>> GetByUserAsync(int userId)

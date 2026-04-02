@@ -137,7 +137,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
             _logger.LogInformation("Starting full scan for library {LibraryId} at {Path}", libraryId, libraryPath);
 
             var movieDirectories = GetMovieDirectories(libraryPath);
-            _logger.LogInformation("Found {Count} movie directories) to scan", movieDirectories.Count);
+            _logger.LogInformation("Found {Count} movie directories to scan", movieDirectories.Count);
 
             foreach (var movieDir in movieDirectories)
             {
@@ -182,6 +182,9 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
         }
     }
 
+    /// <summary>
+    /// 获取所有电影目录
+    /// </summary>
     private List<string[]> GetMovieDirectories(string libraryPath)
     {
         var movieDirs = new List<string[]>();
@@ -204,6 +207,9 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
         return movieDirs;
     }
 
+    /// <summary>
+    /// 判断是否为电影目录（包含视频文件或NFO文件）
+    /// </summary>
     private bool IsMovieDirectory(string directoryPath)
     {
         if (!Directory.Exists(directoryPath))
@@ -220,6 +226,9 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
         return hasNfoFile;
     }
 
+    /// <summary>
+    /// 查找视频文件
+    /// </summary>
     private string? FindVideoFile(string directoryPath)
     {
         if (!Directory.Exists(directoryPath))
@@ -229,6 +238,9 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
         return files.FirstOrDefault(f => VideoExtensions.Contains(Path.GetExtension(f).ToLower()));
     }
 
+    /// <summary>
+    /// 查找NFO文件
+    /// </summary>
     private string? FindNfoFile(string directoryPath)
     {
         if (!Directory.Exists(directoryPath))
@@ -238,7 +250,16 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
         return files.FirstOrDefault(f => f.EndsWith(".nfo", StringComparison.OrdinalIgnoreCase));
     }
 
-    private async Task ProcessMovieDirectoryAsync(MediaHouseDbContext context, int libraryId, string libraryPath, string movieDirName, string movieDirPath, SystemSyncLog log)
+    /// <summary>
+    /// 处理电影目录，解析NFO并处理所有相关实体
+    /// </summary>
+    private async Task ProcessMovieDirectoryAsync(
+        MediaHouseDbContext context,
+        int libraryId,
+        string libraryPath,
+        string movieDirName,
+        string movieDirPath,
+        SystemSyncLog log)
     {
         _logger.LogInformation("Processing movie directory: {DirName}", movieDirName);
 
@@ -251,25 +272,95 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
             return;
         }
 
+        // 解析 NFO 文件
         var parseResult = nfoFile != null ? await _metadataService.ParseNfoFileFullAsync(nfoFile) : null;
 
+        // 使用解析结果中的 Num 作为唯一标识符，如果没有则使用目录名
         var movieIdentifier = parseResult?.Num ?? movieDirName;
 
+        // 处理所有相关实体
         await ProcessMediaItemAsync(context, libraryId, libraryPath, movieDirName, movieDirPath, movieIdentifier, parseResult, log);
     }
 
-    private async Task ProcessMediaItemAsync(MediaHouseDbContext context, int libraryId, string libraryPath, string movieDirName, string movieDirPath, string movieIdentifier, NfoParseResult? parseResult, SystemSyncLog log)
+    /// <summary>
+    /// 处理媒体项目及其所有相关实体（使用数据库事务确保原子性）
+    /// </summary>
+    /// <param name="libraryId">媒体库ID</param>
+    /// <param name="libraryPath">媒体库路径</param>
+    /// <param name="movieDirName">电影目录名</param>
+    /// <param name="movieDirPath">电影目录完整路径</param>
+    /// <param name="movieIdentifier">电影唯一标识符</param>
+    /// <param name="parseResult">NFO解析结果</param>
+    // <param name="log">扫描日志</param>
+    private async Task ProcessMediaItemAsync(
+        MediaHouseDbContext context,
+        int libraryId,
+        string libraryPath,
+        string movieDirName,
+        string movieDirPath,
+        string movieIdentifier,
+        NfoParseResult? parseResult,
+        SystemSyncLog log)
     {
-        // Create or update MediaItem (base media info)
-        var existingMediaItem = await context.MediaItems
-            .FirstOrDefaultAsync(mi => mi.LibraryId == libraryId && (mi.Name == movieIdentifier || mi.Title == movieIdentifier));
+        // 使用数据库事务确保所有操作的原子性
+        await using var transaction = await context.Database.BeginTransactionAsync();
 
-        MediaItem mediaItem;
-        if (existingMediaItem == null)
+        try
+        {
+            // 1. 创建或更新 MediaItem (medias 表)
+            var mediaItem = await UpsertMediaItemAsync(context, libraryId, movieIdentifier, movieDirName, parseResult, log);
+
+            // 2. 创建或更新 Movie 并关联到 MediaItem (movies 表)
+            var movie = await UpsertMovieAsync(context, libraryId, mediaItem.Id, movieIdentifier, parseResult, log);
+
+            // 3. 创建或更新 MediaFile (media_files 表) - 关联到 MediaItem.Id
+            await UpsertMediaFileAsync(context, movieDirPath, mediaItem.Id, parseResult);
+
+            // 4. 创建或更新 MediaImgs (media_imgs 表) - 关联到 MediaItem.Id
+            await UpsertMediaImagesAsync(context, movieDirName, movieDirPath, mediaItem.Id, parseResult);
+
+            // 5. 创建或更新 Tags (tags + media_tags 表) - 关联到 MediaItem.Id
+            if (parseResult?.Tags != null)
+            {
+                await UpsertMediaTagsAsync(context, libraryId, mediaItem.Id, parseResult.Tags);
+            }
+
+            // 6. 创建或更新 Actors (staff + media_staff 表) - 关联到 MediaItem.Id
+            if (parseResult?.Actors != null && parseResult.Actors.Count > 0)
+            {
+                await UpsertMediaStaffAsync(context, mediaItem.Id, parseResult.Actors);
+            }
+
+            // 提事务
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            // 回滚事务
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 创建或更新 MediaItem 实体
+    /// </summary>
+    private async Task<Media> UpsertMediaItemAsync(
+        MediaHouseDbContext context,
+        int libraryId,
+        string movieIdentifier,
+        string movieDirName,
+        NfoParseResult? parseResult,
+        SystemSyncLog log)
+    {
+        var existingItem = await context.Medias
+            .FirstOrDefaultAsync(m => m.LibraryId == libraryId && m.Name == movieIdentifier);
+
+        Media mediaItem;
+        if (existingItem == null)
         {
             _logger.LogInformation("Creating new media item: {Identifier}", movieIdentifier);
-
-            mediaItem = new MediaItem
+            mediaItem = new Media
             {
                 LibraryId = libraryId,
                 Name = movieIdentifier,
@@ -278,259 +369,459 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
                 Type = "movie",
                 ReleaseDate = parseResult?.Premiered,
                 Summary = parseResult?.Summary,
-                PosterPath = parseResult?.ImagePaths?.ContainsKey("poster") == true ? Path.Combine(libraryPath, movieDirName, parseResult.ImagePaths["poster"]) : null,
-                ThumbPath = parseResult?.ImagePaths?.ContainsKey("thumb") == true ? Path.Combine(libraryPath, movieDirName, parseResult.ImagePaths["thumb"]) : null,
-                FanartPath = parseResult?.ImagePaths?.ContainsKey("fanart") == true ? Path.Combine(libraryPath, movieDirName, parseResult.ImagePaths["fanart"]) : null,
+                PosterPath = parseResult?.ImagePaths?.GetValueOrDefault("poster"),
+                ThumbPath = parseResult?.ImagePaths?.GetValueOrDefault("thumb"),
+                FanartPath = parseResult?.ImagePaths?.GetValueOrDefault("fanart"),
                 CreateTime = DateTime.UtcNow,
                 UpdateTime = DateTime.UtcNow
             };
-
-            context.MediaItems.Add(mediaItem);
+            context.Medias.Add(mediaItem);
             log.AddedCount++;
         }
         else
         {
             _logger.LogInformation("Updating existing media item: {Identifier}", movieIdentifier);
-
-            if (parseResult != null)
-            {
-                existingMediaItem.Title = parseResult.Title ?? existingMediaItem.Title;
-                existingMediaItem.OriginalTitle = parseResult.Title ?? existingMediaItem.OriginalTitle;
-                existingMediaItem.ReleaseDate = parseResult.Premiered ?? existingMediaItem.ReleaseDate;
-                existingMediaItem.Summary = parseResult.Summary ?? existingMediaItem.Summary;
-
-                var PosterPath = parseResult.ImagePaths?.ContainsKey("poster") == true ? parseResult.ImagePaths["poster"] : "";
-                if (!string.IsNullOrEmpty(PosterPath))
-                {
-                    existingMediaItem.PosterPath = Path.Combine(libraryPath, movieDirName,  PosterPath);
-                }
-
-                var ThumbPath = parseResult.ImagePaths?.ContainsKey("thumb") == true ? parseResult.ImagePaths["thumb"] : "";
-                if (!string.IsNullOrEmpty(ThumbPath))
-                {
-                    existingMediaItem.ThumbPath = Path.Combine(libraryPath, movieDirName, ThumbPath);
-                }
-
-                var FanartPath = parseResult.ImagePaths?.ContainsKey("fanart") == true ? parseResult.ImagePaths["fanart"] : "";
-                if (!string.IsNullOrEmpty(FanartPath))
-                {
-                    existingMediaItem.FanartPath = Path.Combine(libraryPath, movieDirName, FanartPath);
-                }
-
-                existingMediaItem.UpdateTime = DateTime.UtcNow;
-                mediaItem = existingMediaItem;
-            }
-
-            context.MediaItems.Update(existingMediaItem);
+            UpdateMediaItemFields(existingItem, parseResult);
+            existingItem.UpdateTime = DateTime.UtcNow;
+            mediaItem = existingItem;
             log.UpdatedCount++;
         }
 
         await context.SaveChangesAsync();
-
-        existingMediaItem = await context.MediaItems
-            .FirstOrDefaultAsync(mi => mi.LibraryId == libraryId && (mi.Name == movieIdentifier || mi.Title == movieIdentifier));
-
-        // Create or update Movie (detailed info for movies)
-        await ProcessMovieAsync(context, libraryId, movieIdentifier, parseResult, log, existingMediaItem.Id);
+        return mediaItem;
     }
 
-    private async Task ProcessMovieAsync(MediaHouseDbContext context, int libraryId, string movieIdentifier, NfoParseResult? parseResult, SystemSyncLog log, int mediaItemId)
+    /// <summary>
+    /// 更新 MediaItem 字段（仅更新非空字段）
+    /// </summary>
+    private void UpdateMediaItemFields(Media mediaItem, NfoParseResult? parseResult)
+    {
+        if (parseResult == null) return;
+
+        if (!string.IsNullOrEmpty(parseResult.Title))
+        {
+            mediaItem.Title = parseResult.Title;
+            mediaItem.OriginalTitle = parseResult.Title;
+        }
+
+        if (!string.IsNullOrEmpty(parseResult.Premiered))
+        {
+            mediaItem.ReleaseDate = parseResult.Premiered;
+        }
+
+        if (!string.IsNullOrEmpty(parseResult.Summary))
+        {
+            mediaItem.Summary = parseResult.Summary;
+        }
+
+        // 更新图片路径（如果存在）
+        if (parseResult.ImagePaths != null)
+        {
+            if (parseResult.ImagePaths.TryGetValue("poster", out var poster) && !string.IsNullOrEmpty(poster))
+                mediaItem.PosterPath = poster;
+
+            if (parseResult.ImagePaths.TryGetValue("thumb", out var thumb) && !string.IsNullOrEmpty(thumb))
+                mediaItem.ThumbPath = thumb;
+
+            if (parseResult.ImagePaths.TryGetValue("fanart", out var fanart) && !string.IsNullOrEmpty(fanart))
+                mediaItem.FanartPath = fanart;
+        }
+    }
+
+    /// <summary>
+    /// 创建或更新 Movie 实体并与 MediaItem 关联
+    /// </summary>
+    private async Task<Movie> UpsertMovieAsync(
+        MediaHouseDbContext context,
+        int libraryId,
+        int mediaItemId,
+        string movieIdentifier,
+        NfoParseResult? parseResult,
+        SystemSyncLog log)
     {
         var existingMovie = await context.Movies
-            .Include(m => m.MediaFile)
-            .Include(m => m.MediaItem)
             .FirstOrDefaultAsync(m => m.Num == movieIdentifier);
 
-        if (existingMovie != null)
+        Movie movie;
+        if (existingMovie == null)
         {
             _logger.LogInformation("Creating new movie: {Identifier}", movieIdentifier);
-
-            var movie = new Movie
+            movie = new Movie
             {
-                MediaLibraryId = libraryId,
-                Num = parseResult?.Num,
-                Title = parseResult?.Title ?? movieIdentifier,
+                LibraryId = libraryId,
+                MediaId = mediaItemId,  // 关联到 Media
+                Num = parseResult?.Num ?? movieIdentifier,
                 Studio = parseResult?.Studios,
                 Maker = parseResult?.Maker,
                 Runtime = parseResult?.Runtime,
-                Overview = parseResult?.Summary,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                Description = parseResult?.Summary,
+                CreateTime = DateTime.UtcNow,
+                UpdateTime = DateTime.UtcNow
             };
-
-            if (!string.IsNullOrEmpty(parseResult?.Premiered))
-            {
-                movie.ReleaseDate = parseResult.Premiered;
-            }
-
             context.Movies.Add(movie);
             log.AddedCount++;
         }
         else
         {
             _logger.LogInformation("Updating existing movie: {Identifier}", movieIdentifier);
-
-            if (parseResult != null)
+            UpdateMovieFields(existingMovie, parseResult);
+            // 确保关联到正确的 Media
+            if (existingMovie.MediaId != mediaItemId)
             {
-                existingMovie.Title = parseResult.Title ?? existingMovie.Title;
-                existingMovie.Studio = parseResult?.Studios ?? existingMovie.Studio;
-                existingMovie.Maker = parseResult?.Maker ?? existingMovie.Maker;
-                existingMovie.Runtime = parseResult.Runtime ?? existingMovie.Runtime;
-                existingMovie.Overview = parseResult.Summary ?? existingMovie.Overview;
-
-                if (!string.IsNullOrEmpty(parseResult?.Premiered))
-                {
-                    existingMovie.ReleaseDate = parseResult.Premiered;
-                }
-
-                existingMovie.UpdatedAt = DateTime.UtcNow;
+                existingMovie.MediaId = mediaItemId;
             }
-
-            context.Movies.Update(existingMovie);
+            existingMovie.UpdateTime = DateTime.UtcNow;
+            movie = existingMovie;
             log.UpdatedCount++;
         }
 
         await context.SaveChangesAsync();
-
-        // Link movie to media item
-        await LinkMovieToMediaItemAsync(context, movieIdentifier, mediaItemId);
-
-        // Create MediaFile
-        await CreateMovieMediaFileAsync(context, libraryId, movieIdentifier, parseResult, log);
-
-        // Create tags
-        if (parseResult?.Tags != null)
-        {
-            await CreateMovieTagsAsync(context, libraryId, movieIdentifier, parseResult.Tags);
-        }
-
-        // Create actors and MediaStaff
-        if (parseResult?.Actors != null && parseResult.Actors.Count > 0)
-        {
-            await CreateMovieActorsAsync(context, libraryId, movieIdentifier, parseResult.Actors);
-        }
+        return movie;
     }
 
-    private async Task LinkMovieToMediaItemAsync(MediaHouseDbContext context, string movieIdentifier, int mediaItemId)
+    /// <summary>
+    /// 更新 Movie 字段（仅更新非空字段）
+    /// </summary>
+    private void UpdateMovieFields(Movie movie, NfoParseResult? parseResult)
     {
-        var mediaItem = await context.MediaItems.FindAsync(mediaItemId);
-        var movie = await context.Movies.FirstOrDefaultAsync(m => m.Num == movieIdentifier);
+        if (parseResult == null) return;
 
-        if (mediaItem != null && movie != null)
+        if (!string.IsNullOrEmpty(parseResult.Studios))
+            movie.Studio = parseResult.Studios;
+
+        if (!string.IsNullOrEmpty(parseResult.Maker))
+            movie.Maker = parseResult.Maker;
+
+        if (parseResult.Runtime.HasValue)
+            movie.Runtime = parseResult.Runtime.Value;
+
+        if (!string.IsNullOrEmpty(parseResult.Summary))
+            movie.Description = parseResult.Summary;
+    }
+
+    /// <summary>
+    /// 创建或更新视频文件 MediaFile 记录
+    /// 表: media_files
+    /// 唯一标识: path (文件完整路径)
+    /// </summary>
+    /// <param name="context">数据库上下文</param>
+    /// <param name="movieDirPath">电影目录路径</param>
+    /// <param name="mediaItemId">MediaItem.ID (media_files.media_id)</param>
+    /// <param name="parseResult">NFO解析结果</param>
+    private async Task UpsertMediaFileAsync(
+        MediaHouseDbContext context,
+        string movieDirPath,
+        int mediaItemId,
+        NfoParseResult? parseResult)
+    {
+        var videoFile = FindVideoFile(movieDirPath);
+        if (videoFile == null)
         {
-            var existingMediaItemFromDb = await context.MediaItems
-                .IncludeAsSplit()
-                    .ThenInclude(mi => mi.Movies)
-                    .FirstOrDefaultAsync(mi => mi.Id == mediaItemId);
+            _logger.LogWarning("No video file found in {DirPath}", movieDirPath);
+            return;
+        }
 
-            if (existingMediaItemFromDb != null)
+        var existingFile = await context.MediaFiles
+            .FirstOrDefaultAsync(mf => mf.Path == videoFile);
+
+        if (existingFile == null)
+        {
+            // 不存在，创建新记录
+            _logger.LogInformation("Creating media file: {FilePath}", videoFile);
+            var fileInfo = new FileInfo(videoFile);
+
+            var mediaFile = new MediaFile
             {
-                existingMediaItemFromDb.Movies.Add(movie);
+                MediaId = mediaItemId,  // 关联到 MediaItem.Id
+                Path = videoFile,
+                FileName = fileInfo.Name,
+                Extension = fileInfo.Extension.TrimStart('.'),
+                Container = fileInfo.Extension.TrimStart('.'),
+                SizeBytes = fileInfo.Length,
+                // TODO: 使用 MediaInfo 提取视频元数据
+                // VideoCodec, AudioCodec, Width, Height, Runtime
+                CreateTime = DateTime.UtcNow,
+                UpdateTime = DateTime.UtcNow
+            };
+
+            context.MediaFiles.Add(mediaFile);
+        }
+        else
+        {
+            // 已存在，检查是否需要更新
+            var fileInfo = new FileInfo(videoFile);
+            var needsUpdate = false;
+
+            if (existingFile.SizeBytes != fileInfo.Length)
+            {
+                existingFile.SizeBytes = fileInfo.Length;
+                needsUpdate = true;
+            }
+
+            // 确保 MediaId 正确关联
+            if (existingFile.MediaId != mediaItemId)
+            {
+                existingFile.MediaId = mediaItemId;
+                needsUpdate = true;
+            }
+
+            if (needsUpdate)
+            {
+                existingFile.UpdateTime = DateTime.UtcNow;
+                context.MediaFiles.Update(existingFile);
             }
         }
     }
 
-    private async Task CreateMovieMediaFileAsync(MediaHouseDbContext context, int libraryId, string movieIdentifier, NfoParseResult? parseResult, SystemSyncLog log)
+    /// <summary>
+    /// 创建或更新图片资源 MediaImgs 记录
+    /// 表: media_imgs
+    /// 唯一标识: path (图片文件完整路径)
+    /// </summary>
+    /// <param name="context">数据库上下文</param>
+    /// <param name="movieDirName">电影目录名</param>
+    /// <param name="movieDirPath">电影目录路径</param>
+    /// <param name="mediaItemId">MediaItem.ID (media_imgs.media_id)</param>
+    /// <param name="parseResult">NFO解析结果</param>
+    private async Task UpsertMediaImagesAsync(
+        MediaHouseDbContext context,
+        string movieDirName,
+        string movieDirPath,
+        int mediaItemId,
+        NfoParseResult? parseResult)
     {
-        var movie = await context.Movies.FirstOrDefaultAsync(m => m.Num == movieIdentifier);
-        if (movie == null)
-        {
-            _logger.LogWarning("Movie not found after media item creation: {Identifier}", movieIdentifier);
+        if (parseResult?.ImagePaths == null)
             return;
-        }
 
-        var videoFile = parseResult?.VideoFile ?? ""; // TODO: Get actual video file path
-        var fileInfo = new FileInfo(videoFile);
+        // 支要的图片类型：poster, thumb, fanart
+        var imageTypes = new[] { "poster", "thumb", "fanart" };
 
-        var mediaFile = new MediaFile
+        foreach (var imageType in imageTypes)
         {
-            MediaType = MediaType.Movie,
-            MediaId = movie.Id,
-            MovieId = movie.Id,
-            Path = videoFile,
-            FileName = fileInfo.Name,
-            Extension = fileInfo.Extension,
-            SizeBytes = fileInfo.Length,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            if (!parseResult.ImagePaths.TryGetValue(imageType, out var imagePath) || string.IsNullOrEmpty(imagePath))
+                continue;
 
-        context.MediaFiles.Add(mediaFile);
+            var fullPath = Path.Combine(movieDirPath, imagePath);
+            if (!File.Exists(fullPath))
+            {
+                _logger.LogWarning("Image file not found: {FilePath}", fullPath);
+                continue;
+            }
+
+            var fileInfo = new FileInfo(fullPath);
+
+            // 检查是否已存在（通过路径）
+            var existingImage = await context.MediaImgs
+                .FirstOrDefaultAsync(mi => mi.Path == fullPath);
+
+            if (existingImage == null)
+            {
+                // 不存在，创建新记录
+                _logger.LogInformation("Creating media image: {Type} - {FilePath}", imageType, fullPath);
+
+                var mediaImg = new MediaImgs
+                {
+                    MediaId = mediaItemId,  // 关联到 MediaItem.Id
+                    UrlName = Path.GetFileNameWithoutExtension(imagePath),
+                    Name = Guid.NewGuid().ToString()[..8] + "_" + fileInfo.Extension.TrimStart('.'),
+                    Path = fullPath,
+                    FileName = fileInfo.Name,
+                    Extension = fileInfo.Extension.TrimStart('.'),
+                    Type = imageType,  // "poster" / "thumb" / "fanart"
+                    SizeBytes = fileInfo.Length,
+                    CreateTime = DateTime.UtcNow,
+                    UpdateTime = DateTime.UtcNow
+                };
+
+                context.MediaImgs.Add(mediaImg);
+            }
+            else
+            {
+                // 已存在，检查是否需要更新
+                var needsUpdate = false;
+
+                // 更新文件大小信息（如果文件已更改）
+                if (existingImage.SizeBytes != fileInfo.Length)
+                {
+                    existingImage.SizeBytes = fileInfo.Length;
+                    needsUpdate = true;
+                }
+
+                // 确保 MediaId 正确关联
+                if (existingImage.MediaId != mediaItemId)
+                {
+                    existingImage.MediaId = mediaItemId;
+                    needsUpdate = true;
+                }
+
+                if (needsUpdate)
+                {
+                    existingImage.UpdateTime = DateTime.UtcNow;
+                    context.MediaImgs.Update(existingImage);
+                }
+            }
+        }
     }
 
-    private async Task CreateMovieTagsAsync(MediaHouseDbContext context, int libraryId, string movieIdentifier, string tags)
+    /// <summary>
+    /// 创建或更新媒体标签关系
+    /// 表: tags (查找或创建) + media_tags (创建关联)
+    /// media_tags 组合主键: lib_id + media_id + tag_id
+    /// </summary>
+    /// <param name="context">数据库上下文</param>
+    /// <param name="libraryId">媒体库ID</param>
+    /// <param name="mediaItemId">MediaItem.ID (media_tags.media_id)</param>
+    /// <param name="tagsString">标签字符串，逗号分隔</param>
+    private async Task UpsertMediaTagsAsync(
+        MediaHouseDbContext context,
+        int libraryId,
+        int mediaItemId,
+        string tagsString)
     {
-        var movie = await context.Movies.FirstOrDefaultAsync(m => m.Num == movieIdentifier);
-        if (movie == null)
-        {
-            _logger.LogWarning("Movie not found when creating tags: {Identifier}", movieIdentifier);
-            return;
-        }
+        var tagNames = tagsString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        var tagList = tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-        foreach (var tagName in tagList)
+        foreach (var tagName in tagNames)
         {
             if (string.IsNullOrWhiteSpace(tagName))
                 continue;
 
             var trimmedTagName = tagName.Trim();
 
-            var existingTag = await context.MediaTags
-                .FirstOrDefaultAsync(t => t.LibraryId == libraryId && t.TagName == trimmedTagName);
+            // 1. 获取或创建 Tag 实体 (tags 表)
+            var tag = await GetOrCreateTagAsync(context, trimmedTagName);
 
-            if (existingTag == null)
+            // 2. 检查 MediaTag 关联是否已存在 (media_tags 表)
+            var existingMediaTag = await context.MediaTags
+                .FirstOrDefaultAsync(mt => mt.MediaLibraryId == libraryId
+                    && mt.MediaType == "movie"
+                    && mt.MediaId == mediaItemId
+                    && mt.TagId == tag.Id);
+
+            if (existingMediaTag == null)
             {
+                // 3. 创建新的 MediaTag 关联
                 var mediaTag = new MediaTag
                 {
-                    LibraryId = libraryId,
-                    MediaType = MediaType.Movie,
-                    MediaId = movie.Id,
-                    TagName = trimmedTagName,
-                    CreatedAt = DateTime.UtcNow
+                    MediaLibraryId = libraryId,
+                    MediaType = "movie",
+                    MediaId = mediaItemId,  // 关联到 MediaItem.Id
+                    TagId = tag.Id,
+                    CreateTime = DateTime.UtcNow
                 };
+
                 context.MediaTags.Add(mediaTag);
             }
         }
     }
 
-    private async Task CreateMovieActorsAsync(MediaHouseDbContext context, int libraryId, string movieIdentifier, List<string> actors)
+    /// <summary>
+    /// 获取或创建 Tag 实体
+    /// 表: tags
+    /// 唯一标识: tag_name
+    /// </summary>
+    /// <param name="context">数据库上下文</param>
+    /// <param name="tagName">标签名称</param>
+    /// <returns>Tag 实体</returns>
+    private async Task<Tag> GetOrCreateTagAsync(MediaHouseDbContext context, string tagName)
     {
-        var movie = await context.Movies.FirstOrDefaultAsync(m => m.Num == movieIdentifier);
-        if (movie == null)
+        var tag = await context.Tags
+            .FirstOrDefaultAsync(t => t.TagName == tagName);
+
+        if (tag == null)
         {
-            _logger.LogWarning("Movie not found when creating actors: {Identifier}", movieIdentifier);
-            return;
+            _logger.LogInformation("Creating new tag: {TagName}", tagName);
+            tag = new Tag
+            {
+                TagName = tagName,
+                CreateTime = DateTime.UtcNow
+            };
+            context.Tags.Add(tag);
         }
 
-        foreach (var actorName in actors)
+        return tag;
+    }
+
+    /// <summary>
+    /// 创建或更新媒体人员（演员）关系
+    /// 表: staff (查找或创建) + media_staff (创建关联)
+    /// </summary>
+    /// <param name="context">数据库上下文</param>
+    /// <param name="mediaItemId">MediaItem.ID (media_staff.media_id)</param>
+    /// <param name="actorNames">演员名称列表</param>
+    private async Task UpsertMediaStaffAsync(
+        MediaHouseDbContext context,
+        int mediaItemId,
+        List<string> actorNames)
+    {
+        for (int sortOrder = 0; sortOrder < actorNames.Count; sortOrder++)
         {
-            var staff = await GetOrCreateStaffAsync(context, actorName);
+            var actorName = actorNames[sortOrder];
+            if (string.IsNullOrWhiteSpace(actorName))
+                continue;
 
-            var mediaStaff = new MediaStaff
+            var trimmedName = actorName.Trim();
+
+            // 1. 获取或创建 Staff 实体 (staff 表)
+            var staff = await GetOrCreateStaffAsync(context, trimmedName);
+
+            // 2. 检查 MediaStaff 关联是否已存在 (media_staff 表)
+            var existingMediaStaff = await context.MediaStaffs
+                .FirstOrDefaultAsync(ms => ms.MediaType == "movie"
+                    && ms.MediaId == mediaItemId
+                    && ms.StaffId == staff.Id
+                    && ms.RoleType == "actor");
+
+            if (existingMediaStaff == null)
             {
-                MediaType = MediaStaffType.Movie,
-                MediaId = movie.Id,
-                StaffId = staff.Id,
-                RoleType = RoleType.Actor,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+                // 3. 创建新的 MediaStaff 关联
+                var mediaStaff = new MediaStaff
+                {
+                    MediaType = "movie",
+                    MediaId = mediaItemId,  // 关联到 MediaItem.Id
+                    StaffId = staff.Id,
+                    RoleType = "actor",
+                    RoleName = null,
+                    SortOrder = sortOrder,
+                    CreateTime = DateTime.UtcNow,
+                    UpdateTime = DateTime.UtcNow
+                };
 
-            context.MediaStaffs.Add(mediaStaff);
+                context.MediaStaffs.Add(mediaStaff);
+            }
+            else
+            {
+                // 更新排序顺序
+                if (existingMediaStaff.SortOrder != sortOrder)
+                {
+                    existingMediaStaff.SortOrder = sortOrder;
+                    existingMediaStaff.UpdateTime = DateTime.UtcNow;
+                    context.MediaStaffs.Update(existingMediaStaff);
+                }
+            }
         }
     }
 
-    private async Task<Staff> GetOrCreateStaffAsync(MediaHouseDbContext context, string actorName)
+    /// <summary>
+    /// 获取或创建 Staff 实体
+    /// 表: staff
+    /// 唯一标识: name
+    /// </summary>
+    /// <param name="context">数据库上下文</param>
+    /// <param name="staffName">人员名称</param>
+    /// <returns>Staff 实体</returns>
+    private async Task<Staff> GetOrCreateStaffAsync(MediaHouseDbContext context, string staffName)
     {
-        var staff = await context.Staffs.FirstOrDefaultAsync(s => s.Name == actorName);
+        var staff = await context.Staffs
+            .FirstOrDefaultAsync(s => s.Name == staffName);
 
         if (staff == null)
         {
+            _logger.LogInformation("Creating new staff: {StaffName}", staffName);
             staff = new Staff
             {
-                Name = actorName,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                Name = staffName,
+                CreateTime = DateTime.UtcNow,
+                UpdateTime = DateTime.UtcNow
             };
             context.Staffs.Add(staff);
         }

@@ -7,10 +7,10 @@ public class AppUser
     public string PasswordHash { get; set; } = string.Empty;
     public string? Email { get; set; }
     public bool IsActive { get; set; } = true;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreateTime { get; set; } = DateTime.UtcNow;
+    public DateTime UpdateTime { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
-    public ICollection<MyFavor> Favorites { get; set; } = [];
+    public ICollection<MyFavor> MyFavors { get; set; } = [];
     public ICollection<PlayRecord> PlayRecords { get; set; } = [];
 }

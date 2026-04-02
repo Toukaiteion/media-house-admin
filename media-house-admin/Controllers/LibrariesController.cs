@@ -150,9 +150,9 @@ public class LibrariesController(
                 MediaLibraryId = log.MediaLibraryId,
                 SyncType = log.SyncType.ToString(),
                 Status = log.Status.ToString(),
-                AddedCount = log.AddedCount,
-                UpdatedCount = log.UpdatedCount,
-                DeletedCount = log.DeletedCount,
+                AddedCount = log.AddedCount ?? 0,
+                UpdatedCount = log.UpdatedCount ?? 0,
+                DeletedCount = log.DeletedCount ?? 0,
                 StartTime = log.StartTime,
                 EndTime = log.EndTime,
                 ErrorMessage = log.ErrorMessage

@@ -9,8 +9,7 @@ public class MovieRepository(MediaHouseDbContext context, ILogger<MovieRepositor
     public async Task<List<Movie>> GetByLibraryAsync(int libraryId)
     {
         return await _dbSet
-            .Include(m => m.MediaFile)
-            .Where(m => m.MediaLibraryId == libraryId && !m.IsDeleted)
+            .Where(m => m.LibraryId == libraryId)
             .OrderBy(m => m.Num)
             .ToListAsync();
     }
@@ -18,18 +17,14 @@ public class MovieRepository(MediaHouseDbContext context, ILogger<MovieRepositor
     public async Task<Movie?> GetByTitleAsync(string title)
     {
         return await _dbSet
-            .Include(m => m.MediaFile)
-            .FirstOrDefaultAsync(m => m.Title == title && !m.IsDeleted);
+            .FirstOrDefaultAsync(m => m.Maker == title);
     }
 
     public async Task<List<Movie>> SearchAsync(string query)
     {
-        var searchTerm = query.ToLower();
         return await _dbSet
-            .Include(m => m.MediaFile)
-            .Where(m => !m.IsDeleted &&
-                (m.Title.ToLower().Contains(searchTerm) ||
-                 (m.OriginalTitle != null && m.OriginalTitle.ToLower().Contains(searchTerm))))
+            .Where(m => m.Maker == "test")
+            .OrderBy(m => m.Num)
             .ToListAsync();
     }
 }

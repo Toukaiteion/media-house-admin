@@ -5,16 +5,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MediaHouse.Services;
 
-public class MediaFileService : IMediaFileService
+public class MediaFileService(MediaHouseDbContext context, ILogger<MediaFileService> logger) : IMediaFileService
 {
-    private readonly MediaHouseDbContext _context;
-    private readonly ILogger<MediaFileService> _logger;
-
-    public MediaFileService(MediaHouseDbContext context, ILogger<MediaFileService> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
+    private readonly MediaHouseDbContext _context = context;
+    private readonly ILogger<MediaFileService> _logger = logger;
 
     public async Task<MediaFile?> GetMediaFileByPathAsync(string path)
     {
@@ -40,8 +34,6 @@ public class MediaFileService : IMediaFileService
             Path = filePath,
             Extension = fileInfo.Extension,
             SizeBytes = fileInfo.Length,
-            MovieId = movieId,
-            EpisodeId = episodeId
         };
 
         // TODO: Extract media info using MediaInfo or FFmpeg
@@ -67,7 +59,7 @@ public class MediaFileService : IMediaFileService
         mediaFile.Width = updatedFile.Width;
         mediaFile.Height = updatedFile.Height;
         mediaFile.SizeBytes = updatedFile.SizeBytes;
-        mediaFile.UpdatedAt = DateTime.UtcNow;
+        mediaFile.UpdateTime = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
 

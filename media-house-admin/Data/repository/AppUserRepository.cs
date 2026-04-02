@@ -9,7 +9,6 @@ public class AppUserRepository(MediaHouseDbContext context, ILogger<AppUserRepos
     public async Task<AppUser?> GetByUsernameAsync(string username)
     {
         return await _dbSet
-            .Include(u => u.Favorites)
             .Include(u => u.PlayRecords)
             .FirstOrDefaultAsync(u => u.Username == username);
     }
@@ -20,7 +19,6 @@ public class AppUserRepository(MediaHouseDbContext context, ILogger<AppUserRepos
             return null;
 
         return await _dbSet
-            .Include(u => u.Favorites)
             .Include(u => u.PlayRecords)
             .FirstOrDefaultAsync(u => u.Email == email);
     }

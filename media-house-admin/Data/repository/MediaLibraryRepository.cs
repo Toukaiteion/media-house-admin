@@ -9,7 +9,7 @@ public class MediaLibraryRepository(MediaHouseDbContext context, ILogger<MediaLi
     public async Task<MediaLibrary?> GetByNameAsync(string name)
     {
         return await _dbSet
-            .Include(ml => ml.MediaItems)
+            .Include(ml => ml.Medias)
             .FirstOrDefaultAsync(ml => ml.Name == name);
     }
 

@@ -16,16 +16,17 @@ CREATE TABLE media_libraries (
 );
 
 -- ==============================
--- 2. 媒体
+-- 媒体
 -- ==============================
-DROP TABLE IF EXISTS media_items;
-CREATE TABLE media_items (
+DROP TABLE IF EXISTS medias;
+CREATE TABLE medias (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 	library_id INTEGER NOT NULL,
+	type  VARCHAR(20) NOT NULL,         -- movie,tvshow,season, episode
+	parent_id INTEGER NOT NULL DEFAULT 0,
     name VARCHAR(100) NOT NULL,         -- 媒体名
 	title VARCHAR(255) NOT NULL,          -- 标题
 	original_title VARCHAR(255),          -- 原始标题
-    type VARCHAR(20) NOT NULL,          -- movie / tv
 	release_date DATE,                    -- 上映日期
 	summary   VARCHAR(4096),             -- 简介
 	poster_path VARCHAR(255),            -- 海报
@@ -39,16 +40,16 @@ CREATE TABLE media_items (
 
 
 -- ==============================
--- 2. 电影  media_item的type=movie，详细信息
+-- 电影类型详细信息  media_item的type=movie，详细信息
 -- ==============================
 DROP TABLE IF EXISTS movies;
 CREATE TABLE movies (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     library_id INTEGER NOT NULL,
-	media_item_id INTEGER NOT NULL,
+	media_id INTEGER NOT NULL,
     num VARCHAR(64),                          -- 编号/排序号
     studio VARCHAR(255),                  -- 制片公司/工作室
-    marker VARCHAR(100),                 -- 制作公司
+    maker VARCHAR(100),                 -- 制作公司
     runtime INTEGER,                     -- 时长(分钟)
     description TEXT,                    -- 详细描述
     
@@ -57,56 +58,6 @@ CREATE TABLE movies (
     update_time TIMESTAMP DEFAULT (datetime('now','localtime'))
 );
 
--- ==============================
--- 3. 电视剧/剧集
--- ==============================
-DROP TABLE IF EXISTS tv_shows;
-CREATE TABLE tv_shows (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    library_id INTEGER NOT NULL,
-    title VARCHAR(255) NOT NULL,
-    original_title VARCHAR(255),
-    overview TEXT,
-    release_date DATE,
-    poster_path VARCHAR(255),
-    backdrop_path VARCHAR(255),
-    rating DECIMAL(3,1),
-    total_seasons INTEGER DEFAULT 0,     -- 总季数
-    create_time TIMESTAMP DEFAULT (datetime('now','localtime')),
-    update_time TIMESTAMP DEFAULT (datetime('now','localtime'))
-);
-
--- ==============================
--- 4. 季
--- ==============================
-DROP TABLE IF EXISTS seasons;
-CREATE TABLE seasons (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tv_show_id INTEGER NOT NULL,         -- 所属剧集
-    season_number INTEGER NOT NULL,      -- 季号
-    name VARCHAR(255),                  -- 季名称
-    overview TEXT,
-    poster_path VARCHAR(255),
-    create_time TIMESTAMP DEFAULT (datetime('now','localtime')),
-    update_time TIMESTAMP DEFAULT (datetime('now','localtime'))
-);
-
--- ==============================
--- 5. 集
--- ==============================
-DROP TABLE IF EXISTS episodes;
-CREATE TABLE episodes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tv_show_id INTEGER NOT NULL,
-    season_id INTEGER NOT NULL,
-    episode_number INTEGER NOT NULL,    -- 集号
-    title VARCHAR(255),
-    overview TEXT,
-    runtime INTEGER,                    -- 时长
-    release_date DATE,
-    create_time TIMESTAMP DEFAULT (datetime('now','localtime')),
-    update_time TIMESTAMP DEFAULT (datetime('now','localtime'))
-);
 
 -- ==============================
 -- 6. 媒体文件（电影/季/集 都对应一个文件）
@@ -114,8 +65,7 @@ CREATE TABLE episodes (
 DROP TABLE IF EXISTS media_files;
 CREATE TABLE media_files (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    media_type VARCHAR(20) NOT NULL,     -- movie / episode
-    media_id INTEGER NOT NULL,           -- 对应 movies 或 episodes 的ID
+    media_id INTEGER NOT NULL,           -- 对应 media id
     path VARCHAR(500) NOT NULL UNIQUE,          -- 文件路径
     file_name VARCHAR(255) NOT NULL,
     extension VARCHAR(10),
@@ -136,8 +86,7 @@ CREATE TABLE media_files (
 DROP TABLE IF EXISTS media_imgs;
 CREATE TABLE media_imgs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-	media_type VARCHAR(20) NOT NULL,     -- movie / episode
-    media_id INTEGER NOT NULL,           -- 对应 movies 或 episodes 的ID
+    media_id INTEGER NOT NULL,           -- 对应 media id
     url_name VARCHAR(128) NOT NULL,     -- 例如 p300111.jpg
     name VARCHAR(128) NOT NULL,           -- 对应 movies 或 episodes 的ID
     path VARCHAR(500) NOT NULL UNIQUE,          -- 文件路径
@@ -156,12 +105,12 @@ CREATE TABLE media_imgs (
 -- ==============================
 DROP TABLE IF EXISTS media_tags;
 CREATE TABLE media_tags (
-	lib_id INTEGER NOT NULL,
+	media_library_id INTEGER NOT NULL,
     media_type VARCHAR(20) NOT NULL,
     media_id INTEGER NOT NULL,
     tag_id INTEGER NOT NULL,
     create_time TIMESTAMP DEFAULT (datetime('now','localtime')),
-	PRIMARY KEY('lib_id', 'media_id', 'tag_id')
+	PRIMARY KEY('media_library_id', 'media_id', 'tag_id')
 );
 
 DROP TABLE IF EXISTS tags;
@@ -192,9 +141,9 @@ DROP TABLE IF EXISTS my_favor;
 CREATE TABLE my_favor (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-	lib_id INTEGER NOT NULL,
+	library_id INTEGER NOT NULL,
     media_type VARCHAR(20) NOT NULL,    -- movie / tv
-    media_id INTEGER NOT NULL,  -- movies id / tv_shows id
+    media_id INTEGER NOT NULL,  -- media id
     create_time TIMESTAMP DEFAULT (datetime('now','localtime'))
 );
 
@@ -205,9 +154,9 @@ DROP TABLE IF EXISTS play_record;
 CREATE TABLE play_record (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-	lib_id INTEGER NOT NULL,
+	library_id INTEGER NOT NULL,
     media_type VARCHAR(20) NOT NULL,
-    media_id INTEGER NOT NULL,     -- movies id / episode id
+    media_id INTEGER NOT NULL,     -- media id
     position_ms BIGINT DEFAULT 0,        -- 播放进度（毫秒）
     is_finished BOOLEAN DEFAULT 0,
     last_play_time TIMESTAMP,
@@ -218,8 +167,8 @@ CREATE TABLE play_record (
 -- ==============================
 -- 11. 人员表（导演、演员、编剧）
 -- ==============================
-DROP TABLE IF EXISTS staff;
-CREATE TABLE staff (
+DROP TABLE IF EXISTS staffs;
+CREATE TABLE staffs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(100) NOT NULL,         -- 人员姓名
     avatar_path VARCHAR(255),            -- 头像路径
@@ -231,8 +180,8 @@ CREATE TABLE staff (
 -- ==============================
 -- 12. 媒体 <-> 人员 关联表
 -- ==============================
-DROP TABLE IF EXISTS media_staff;
-CREATE TABLE media_staff (
+DROP TABLE IF EXISTS media_staffs;
+CREATE TABLE media_staffs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     media_type VARCHAR(20) NOT NULL,    -- movie / tv_show / season / episode
     media_id INTEGER NOT NULL,          -- 对应媒体ID

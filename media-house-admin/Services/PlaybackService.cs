@@ -17,16 +17,8 @@ public class PlayRecordService(MediaHouseDbContext context, ILogger<PlayRecordSe
         if (mediaType.Equals("movie", StringComparison.CurrentCultureIgnoreCase))
         {
             var movie = await _context.Movies
-                .Include(m => m.MediaFile)
                 .FirstOrDefaultAsync(m => m.Id == mediaId);
-            filePath = movie?.MediaFile?.Path;
-        }
-        else if (mediaType.Equals("episode", StringComparison.CurrentCultureIgnoreCase))
-        {
-            var episode = await _context.Episodes
-                .Include(e => e.MediaFile)
-                .FirstOrDefaultAsync(e => e.Id == mediaId);
-            filePath = episode?.MediaFile?.Path;
+            filePath = "";
         }
 
         if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
@@ -36,23 +28,21 @@ public class PlayRecordService(MediaHouseDbContext context, ILogger<PlayRecordSe
         return $"/api/media/file?path={Uri.EscapeDataString(filePath)}";
     }
 
-    public async Task<PlayRecord?> GetPlaybackProgressAsync(int userId, int mediaLibraryId, MediaType mediaType, int mediaId)
+    public async Task<PlayRecord?> GetPlaybackProgressAsync(int userId, int mediaLibraryId, int mediaId)
     {
         return await _context.PlayRecords
             .FirstOrDefaultAsync(p =>
                 p.UserId == userId &&
-                p.MediaLibraryId == mediaLibraryId &&
-                p.MediaType == mediaType &&
+                p.LibId == mediaLibraryId &&
                 p.MediaId == mediaId);
     }
 
-    public async Task UpdatePlaybackProgressAsync(int userId, int mediaLibraryId, MediaType mediaType, int mediaId, double positionSeconds)
+    public async Task UpdatePlaybackProgressAsync(int userId, int mediaLibraryId, int mediaId, double positionSeconds)
     {
         var progress = await _context.PlayRecords
             .FirstOrDefaultAsync(p =>
                 p.UserId == userId &&
-                p.MediaLibraryId == mediaLibraryId &&
-                p.MediaType == mediaType &&
+                p.LibId == mediaLibraryId &&
                 p.MediaId == mediaId);
 
         long positionMs = (long)(positionSeconds * 1000);
@@ -62,8 +52,7 @@ public class PlayRecordService(MediaHouseDbContext context, ILogger<PlayRecordSe
             progress = new PlayRecord
             {
                 UserId = userId,
-                MediaLibraryId = mediaLibraryId,
-                MediaType = mediaType,
+                LibId = mediaLibraryId,
                 MediaId = mediaId,
                 PositionMs = positionMs,
                 LastPlayTime = DateTime.UtcNow
@@ -74,26 +63,25 @@ public class PlayRecordService(MediaHouseDbContext context, ILogger<PlayRecordSe
         {
             progress.PositionMs = positionMs;
             progress.LastPlayTime = DateTime.UtcNow;
-            progress.UpdatedAt = DateTime.UtcNow;
+            progress.UpdateTime = DateTime.UtcNow;
         }
 
         await _context.SaveChangesAsync();
     }
 
-    public async Task MarkAsCompletedAsync(int userId, int mediaLibraryId, MediaType mediaType, int mediaId)
+    public async Task MarkAsCompletedAsync(int userId, int mediaLibraryId, int mediaId)
     {
         var progress = await _context.PlayRecords
             .FirstOrDefaultAsync(p =>
                 p.UserId == userId &&
-                p.MediaLibraryId == mediaLibraryId &&
-                p.MediaType == mediaType &&
+                p.LibId == mediaLibraryId &&
                 p.MediaId == mediaId);
 
         if (progress != null)
         {
             progress.IsFinished = true;
             progress.LastPlayTime = DateTime.UtcNow;
-            progress.UpdatedAt = DateTime.UtcNow;
+            progress.UpdateTime = DateTime.UtcNow;
             await _context.SaveChangesAsync();
         }
     }
