@@ -174,7 +174,7 @@ public class LibrariesController(
             Name = library.Name,
             Type = library.Type.ToString(),
             Path = library.Path,
-            Status = library.Status.ToString(),
+            Status = library.Status.ToString() ?? "Unknown",
             CreatedAt = library.CreateTime,
             UpdatedAt = library.UpdateTime,
             IsEnabled = library.IsEnabled
