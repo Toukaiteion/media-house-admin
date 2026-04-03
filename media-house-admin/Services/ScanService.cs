@@ -622,8 +622,8 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
                 var mediaImg = new MediaImgs
                 {
                     MediaId = mediaItemId,  // 关联到 MediaItem.Id
-                    UrlName = Path.GetFileNameWithoutExtension(imagePath),
-                    Name = Guid.NewGuid().ToString()[..8] + "_" + fileInfo.Extension.TrimStart('.'),
+                    UrlName = Guid.NewGuid().ToString()[..7] + "_" + fileInfo.Extension.TrimStart('.'),
+                    Name = Path.GetFileNameWithoutExtension(imagePath),
                     Path = fullPath,
                     FileName = fileInfo.Name,
                     Extension = fileInfo.Extension.TrimStart('.'),
