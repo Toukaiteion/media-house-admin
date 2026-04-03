@@ -13,6 +13,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
     private readonly MediaHouseDbContext _context = context;
 
     private static readonly string[] VideoExtensions = [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm"];
+    private static readonly string[] ScreenshotExtensions = [".jpg", ".jpeg", ".png", ".webp"];
 
     public async Task<SystemSyncLog> StartFullScanAsync(int libraryId)
     {
@@ -251,6 +252,42 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
     }
 
     /// <summary>
+    /// 查找 extrafanart 子目录
+    /// </summary>
+    private string? FindExtrafanartDirectory(string movieDirPath)
+    {
+        var extrafanartPath = Path.Combine(movieDirPath, "extrafanart");
+        return Directory.Exists(extrafanartPath) ? extrafanartPath : null;
+    }
+
+    /// <summary>
+    /// 处理截图文件，返回用逗号分隔的 url_name 列表
+    /// </summary>
+    /// <param name="extrafanartDir">extrafanart 目录路径</param>
+    /// <returns>用逗号分隔的 url_name 列表</returns>
+    private string ProcessScreenshots(string extrafanartDir)
+    {
+        var screenshotUrlNames = new List<string>();
+
+        if (!Directory.Exists(extrafanartDir))
+            return string.Join(",", screenshotUrlNames);
+
+        var files = Directory.GetFiles(extrafanartDir);
+
+        foreach (var file in files)
+        {
+            var extension = Path.GetExtension(file).ToLower();
+            if (!ScreenshotExtensions.Contains(extension))
+                continue;
+
+            var urlName = MediaUtils.GenerateUrlNameFromPath(file);
+            screenshotUrlNames.Add(urlName);
+        }
+
+        return string.Join(",", screenshotUrlNames);
+    }
+
+    /// <summary>
     /// 处理电影目录，解析NFO并处理所有相关实体
     /// </summary>
     private async Task ProcessMovieDirectoryAsync(
@@ -305,6 +342,19 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
         // 预先生成图片 url_name 映射（格式：uuid前7位 + "_" + 图片后缀）
         var imageUrlNames = GenerateImageUrlNames(movieDirPath, parseResult);
 
+        // 处理 extrafanart 子目录中的截图
+        var extrafanartDir = FindExtrafanartDirectory(movieDirPath);
+        var screenshotPaths = new List<string>();
+        string screenshotsPath = string.Empty;
+        if (extrafanartDir != null)
+        {
+            screenshotsPath = ProcessScreenshots(extrafanartDir);
+            if (!string.IsNullOrEmpty(screenshotsPath))
+            {
+                screenshotPaths = [.. Directory.GetFiles(extrafanartDir).Where(f => ScreenshotExtensions.Contains(Path.GetExtension(f).ToLower()))];
+            }
+        }
+
         // 使用数据库事务确保所有操作的原子性
         await using var transaction = await context.Database.BeginTransactionAsync();
 
@@ -314,13 +364,13 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
             var mediaItem = await UpsertMediaItemAsync(context, libraryId, movieIdentifier, movieDirName, parseResult, imageUrlNames, log);
 
             // 2. 创建或更新 Movie 并关联到 MediaItem (movies 表)
-            var movie = await UpsertMovieAsync(context, libraryId, mediaItem.Id, movieIdentifier, parseResult, log);
+            var movie = await UpsertMovieAsync(context, libraryId, mediaItem.Id, movieIdentifier, parseResult, screenshotsPath, log);
 
             // 3. 创建或更新 MediaFile (media_files 表) - 关联到 MediaItem.Id
             await UpsertMediaFileAsync(context, movieDirPath, mediaItem.Id, parseResult);
 
             // 4. 创建或更新 MediaImgs (media_imgs 表) - 关联到 MediaItem.Id
-            await UpsertMediaImagesAsync(context, movieDirName, movieDirPath, mediaItem.Id, parseResult, imageUrlNames);
+            await UpsertMediaImagesAsync(context, movieDirName, movieDirPath, mediaItem.Id, parseResult, imageUrlNames, screenshotPaths);
 
             // 5. 创建或更新 Tags (tags + media_tags 表) - 关联到 MediaItem.Id
             if (parseResult?.Tags != null)
@@ -470,6 +520,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
         int mediaItemId,
         string movieIdentifier,
         NfoParseResult? parseResult,
+        string? screenshotsPath,
         SystemSyncLog log)
     {
         var existingMovie = await context.Movies
@@ -488,6 +539,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
                 Maker = parseResult?.Maker,
                 Runtime = parseResult?.Runtime,
                 Description = parseResult?.Summary,
+                ScreenshotsPath = screenshotsPath,
                 CreateTime = DateTime.UtcNow,
                 UpdateTime = DateTime.UtcNow
             };
@@ -497,7 +549,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
         else
         {
             _logger.LogInformation("Updating existing movie: {Identifier}", movieIdentifier);
-            UpdateMovieFields(existingMovie, parseResult);
+            UpdateMovieFields(existingMovie, parseResult, screenshotsPath);
             // 确保关联到正确的 Media
             if (existingMovie.MediaId != mediaItemId)
             {
@@ -515,7 +567,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
     /// <summary>
     /// 更新 Movie 字段（仅更新非空字段）
     /// </summary>
-    private void UpdateMovieFields(Movie movie, NfoParseResult? parseResult)
+    private void UpdateMovieFields(Movie movie, NfoParseResult? parseResult, string? screenshotsPath)
     {
         if (parseResult == null) return;
 
@@ -530,6 +582,8 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
 
         if (!string.IsNullOrEmpty(parseResult.Summary))
             movie.Description = parseResult.Summary;
+
+        movie.ScreenshotsPath = screenshotsPath;
     }
 
     /// <summary>
@@ -617,13 +671,15 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
     /// <param name="mediaItemId">MediaItem.ID (media_imgs.media_id)</param>
     /// <param name="parseResult">NFO解析结果</param>
     /// <param name="imageUrlNames">预先生成的 url_name 映射</param>
+    /// <param name="screenshotPaths">截图文件路径列表</param>
     private async Task UpsertMediaImagesAsync(
         MediaHouseDbContext context,
         string movieDirName,
         string movieDirPath,
         int mediaItemId,
         NfoParseResult? parseResult,
-        Dictionary<string, string> imageUrlNames)
+        Dictionary<string, string> imageUrlNames,
+        List<string>? screenshotPaths)
     {
         if (parseResult?.ImagePaths == null)
             return;
@@ -658,7 +714,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
                 {
                     MediaId = mediaItemId,  // 关联到 MediaItem.Id
                     UrlName = imageUrlNames[imageType],  // 使用预先生成的 url_name
-                    Name = Path.GetFileNameWithoutExtension(imagePath),
+                    Name = fileInfo.Name,
                     Path = fullPath,
                     FileName = fileInfo.Name,
                     Extension = fileInfo.Extension.TrimStart('.'),
@@ -701,6 +757,71 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
                 {
                     existingImage.UpdateTime = DateTime.UtcNow;
                     context.MediaImgs.Update(existingImage);
+                }
+            }
+        }
+
+        // 处理截图文件
+        if (screenshotPaths != null && screenshotPaths.Count > 0)
+        {
+            foreach (var screenshotPath in screenshotPaths)
+            {
+                var fileInfo = new FileInfo(screenshotPath);
+                var urlName = MediaUtils.GenerateUrlNameFromPath(screenshotPath);
+
+                // 检查是否已存在（通过路径）
+                var existingImage = await context.MediaImgs
+                    .FirstOrDefaultAsync(mi => mi.Path == screenshotPath);
+
+                if (existingImage == null)
+                {
+                    // 不存在，创建新记录
+                    _logger.LogInformation("Creating screenshot: {FilePath}", screenshotPath);
+
+                    var mediaImg = new MediaImgs
+                    {
+                        MediaId = mediaItemId,
+                        UrlName = urlName,
+                        Name = fileInfo.Name,
+                        Path = screenshotPath,
+                        FileName = fileInfo.Name,
+                        Extension = fileInfo.Extension.TrimStart('.'),
+                        Type = "screenshot",
+                        SizeBytes = fileInfo.Length,
+                        CreateTime = DateTime.UtcNow,
+                        UpdateTime = DateTime.UtcNow
+                    };
+
+                    context.MediaImgs.Add(mediaImg);
+                }
+                else
+                {
+                    // 已存在，检查是否需要更新
+                    var needsUpdate = false;
+
+                    if (existingImage.SizeBytes != fileInfo.Length)
+                    {
+                        existingImage.SizeBytes = fileInfo.Length;
+                        needsUpdate = true;
+                    }
+
+                    if (existingImage.MediaId != mediaItemId)
+                    {
+                        existingImage.MediaId = mediaItemId;
+                        needsUpdate = true;
+                    }
+
+                    if (existingImage.UrlName != urlName)
+                    {
+                        existingImage.UrlName = urlName;
+                        needsUpdate = true;
+                    }
+
+                    if (needsUpdate)
+                    {
+                        existingImage.UpdateTime = DateTime.UtcNow;
+                        context.MediaImgs.Update(existingImage);
+                    }
                 }
             }
         }
