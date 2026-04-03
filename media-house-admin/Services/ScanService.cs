@@ -302,13 +302,16 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
         NfoParseResult? parseResult,
         SystemSyncLog log)
     {
+        // 预先生成图片 url_name 映射（格式：uuid前7位 + "_" + 图片后缀）
+        var imageUrlNames = GenerateImageUrlNames(movieDirPath, parseResult);
+
         // 使用数据库事务确保所有操作的原子性
         await using var transaction = await context.Database.BeginTransactionAsync();
 
         try
         {
             // 1. 创建或更新 MediaItem (medias 表)
-            var mediaItem = await UpsertMediaItemAsync(context, libraryId, movieIdentifier, movieDirName, parseResult, log);
+            var mediaItem = await UpsertMediaItemAsync(context, libraryId, movieIdentifier, movieDirName, parseResult, imageUrlNames, log);
 
             // 2. 创建或更新 Movie 并关联到 MediaItem (movies 表)
             var movie = await UpsertMovieAsync(context, libraryId, mediaItem.Id, movieIdentifier, parseResult, log);
@@ -317,7 +320,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
             await UpsertMediaFileAsync(context, movieDirPath, mediaItem.Id, parseResult);
 
             // 4. 创建或更新 MediaImgs (media_imgs 表) - 关联到 MediaItem.Id
-            await UpsertMediaImagesAsync(context, movieDirName, movieDirPath, mediaItem.Id, parseResult);
+            await UpsertMediaImagesAsync(context, movieDirName, movieDirPath, mediaItem.Id, parseResult, imageUrlNames);
 
             // 5. 创建或更新 Tags (tags + media_tags 表) - 关联到 MediaItem.Id
             if (parseResult?.Tags != null)
@@ -343,14 +346,44 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
     }
 
     /// <summary>
-    /// 创建或更新 MediaItem 实体
+    /// 生成图片 url_name 映射
+    /// 格式：{hash}.{extension}
     /// </summary>
+    private Dictionary<string, string> GenerateImageUrlNames(string movieDirPath, NfoParseResult? parseResult)
+    {
+        var imageUrlNames = new Dictionary<string, string>();
+
+        if (parseResult?.ImagePaths == null)
+            return imageUrlNames;
+
+        var imageTypes = new[] { "poster", "thumb", "fanart" };
+
+        foreach (var imageType in imageTypes)
+        {
+            if (!parseResult.ImagePaths.TryGetValue(imageType, out var imagePath) || string.IsNullOrEmpty(imagePath))
+                continue;
+
+            var fullPath = Path.Combine(movieDirPath, imagePath);
+            if (!File.Exists(fullPath))
+                continue;
+
+            var urlName = MediaUtils.GenerateUrlNameFromPath(fullPath);
+            imageUrlNames[imageType] = urlName;
+        }
+
+        return imageUrlNames;
+    }
+
+    /// <summary>
+    /// 创建或更新 MediaItem 实体
+    /// </param>
     private async Task<Media> UpsertMediaItemAsync(
         MediaHouseDbContext context,
         int libraryId,
         string movieIdentifier,
         string movieDirName,
         NfoParseResult? parseResult,
+        Dictionary<string, string> imageUrlNames,
         SystemSyncLog log)
     {
         var existingItem = await context.Medias
@@ -369,9 +402,9 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
                 Type = "movie",
                 ReleaseDate = parseResult?.Premiered,
                 Summary = parseResult?.Summary,
-                PosterPath = parseResult?.ImagePaths?.GetValueOrDefault("poster"),
-                ThumbPath = parseResult?.ImagePaths?.GetValueOrDefault("thumb"),
-                FanartPath = parseResult?.ImagePaths?.GetValueOrDefault("fanart"),
+                PosterPath = imageUrlNames.GetValueOrDefault("poster"),
+                ThumbPath = imageUrlNames.GetValueOrDefault("thumb"),
+                FanartPath = imageUrlNames.GetValueOrDefault("fanart"),
                 CreateTime = DateTime.UtcNow,
                 UpdateTime = DateTime.UtcNow
             };
@@ -381,7 +414,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
         else
         {
             _logger.LogInformation("Updating existing media item: {Identifier}", movieIdentifier);
-            UpdateMediaItemFields(existingItem, parseResult);
+            UpdateMediaItemFields(existingItem, parseResult, imageUrlNames);
             existingItem.UpdateTime = DateTime.UtcNow;
             mediaItem = existingItem;
             log.UpdatedCount++;
@@ -394,7 +427,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
     /// <summary>
     /// 更新 MediaItem 字段（仅更新非空字段）
     /// </summary>
-    private void UpdateMediaItemFields(Media mediaItem, NfoParseResult? parseResult)
+    private void UpdateMediaItemFields(Media mediaItem, NfoParseResult? parseResult, Dictionary<string, string> imageUrlNames)
     {
         if (parseResult == null) return;
 
@@ -414,17 +447,17 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
             mediaItem.Summary = parseResult.Summary;
         }
 
-        // 更新图片路径（如果存在）
+        // 更新图片路径（使用 url_name）
         if (parseResult.ImagePaths != null)
         {
-            if (parseResult.ImagePaths.TryGetValue("poster", out var poster) && !string.IsNullOrEmpty(poster))
-                mediaItem.PosterPath = poster;
+            if (parseResult.ImagePaths.TryGetValue("poster", out var poster) && !string.IsNullOrEmpty(poster) && imageUrlNames.ContainsKey("poster"))
+                mediaItem.PosterPath = imageUrlNames["poster"];
 
-            if (parseResult.ImagePaths.TryGetValue("thumb", out var thumb) && !string.IsNullOrEmpty(thumb))
-                mediaItem.ThumbPath = thumb;
+            if (parseResult.ImagePaths.TryGetValue("thumb", out var thumb) && !string.IsNullOrEmpty(thumb) && imageUrlNames.ContainsKey("thumb"))
+                mediaItem.ThumbPath = imageUrlNames["thumb"];
 
-            if (parseResult.ImagePaths.TryGetValue("fanart", out var fanart) && !string.IsNullOrEmpty(fanart))
-                mediaItem.FanartPath = fanart;
+            if (parseResult.ImagePaths.TryGetValue("fanart", out var fanart) && !string.IsNullOrEmpty(fanart) && imageUrlNames.ContainsKey("fanart"))
+                mediaItem.FanartPath = imageUrlNames["fanart"];
         }
     }
 
@@ -583,12 +616,14 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
     /// <param name="movieDirPath">电影目录路径</param>
     /// <param name="mediaItemId">MediaItem.ID (media_imgs.media_id)</param>
     /// <param name="parseResult">NFO解析结果</param>
+    /// <param name="imageUrlNames">预先生成的 url_name 映射</param>
     private async Task UpsertMediaImagesAsync(
         MediaHouseDbContext context,
         string movieDirName,
         string movieDirPath,
         int mediaItemId,
-        NfoParseResult? parseResult)
+        NfoParseResult? parseResult,
+        Dictionary<string, string> imageUrlNames)
     {
         if (parseResult?.ImagePaths == null)
             return;
@@ -622,7 +657,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
                 var mediaImg = new MediaImgs
                 {
                     MediaId = mediaItemId,  // 关联到 MediaItem.Id
-                    UrlName = Guid.NewGuid().ToString()[..7] + "_" + fileInfo.Extension.TrimStart('.'),
+                    UrlName = imageUrlNames[imageType],  // 使用预先生成的 url_name
                     Name = Path.GetFileNameWithoutExtension(imagePath),
                     Path = fullPath,
                     FileName = fileInfo.Name,
@@ -651,6 +686,14 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
                 if (existingImage.MediaId != mediaItemId)
                 {
                     existingImage.MediaId = mediaItemId;
+                    needsUpdate = true;
+                }
+
+                // 检查 url_name 是否需要更新
+                var currentUrlName = imageUrlNames[imageType];
+                if (existingImage.UrlName != currentUrlName)
+                {
+                    existingImage.UrlName = currentUrlName;
                     needsUpdate = true;
                 }
 
