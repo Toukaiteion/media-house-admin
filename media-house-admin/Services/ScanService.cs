@@ -736,6 +736,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
                 CreateTime = DateTime.UtcNow
             };
             context.Tags.Add(tag);
+            await context.SaveChangesAsync();
         }
 
         return tag;
@@ -824,6 +825,7 @@ public class ScanService(IServiceScopeFactory scopeFactory, ILogger<ScanService>
                 UpdateTime = DateTime.UtcNow
             };
             context.Staffs.Add(staff);
+            await context.SaveChangesAsync();
         }
 
         return staff;
