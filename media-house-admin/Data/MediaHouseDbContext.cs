@@ -21,6 +21,13 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Media -> MediaLibrary (many-to-one via LibraryId)
+        modelBuilder.Entity<Media>()
+            .HasOne(m => m.Library)
+            .WithMany(ml => ml.Medias)
+            .HasForeignKey(m => m.LibraryId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // MediaLibrary -> Medias
         modelBuilder.Entity<MediaLibrary>()
             .HasMany(m => m.Medias)
@@ -73,6 +80,13 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
             .HasOne(ms => ms.Staff)
             .WithMany(s => s.MediaStaffs)
             .HasForeignKey(ms => ms.StaffId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // MediaImgs -> Media (many-to-one via MediaId)
+        modelBuilder.Entity<MediaImgs>()
+            .HasOne(mi => mi.Media)
+            .WithMany(m => m.MediaImgs)
+            .HasForeignKey(mi => mi.MediaId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Indexes for performance
