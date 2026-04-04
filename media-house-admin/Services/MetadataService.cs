@@ -103,6 +103,7 @@ public class MetadataService(ILogger<MetadataService> logger) : IMetadataService
         var values = parent.Elements(elementName)
             .Select(e => e.Element(subElementName)?.Value?.Trim())
             .Where(v => !string.IsNullOrEmpty(v))
+            .Select(v => v!)
             .ToList();
 
         return values ?? [];
@@ -158,8 +159,7 @@ public class MetadataService(ILogger<MetadataService> logger) : IMetadataService
                 // Load existing NFO file
                 var xml = await File.ReadAllTextAsync(filePath);
                 doc = XDocument.Parse(xml);
-                root = doc.Root;
-                if (root == null) root = new XElement("movie");
+                root = doc.Root ?? new XElement("movie");
             }
             else
             {

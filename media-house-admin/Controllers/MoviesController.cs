@@ -155,7 +155,7 @@ public class MoviesController(
             .Where(mt => mt.Tag != null)
             .Select(mt => new TagDto
             {
-                Id = mt.Tag.Id.ToString(),
+                Id = mt.Tag!.Id.ToString(),
                 TagName = mt.Tag.TagName
             })
             .ToList() ?? [];
