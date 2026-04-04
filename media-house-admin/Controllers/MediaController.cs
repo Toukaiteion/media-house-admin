@@ -11,10 +11,12 @@ namespace MediaHouse.Controllers;
 public class MediaController(
     MediaHouseDbContext dbContext,
     IMediaService mediaService,
+    IFavorService favorService,
     ILogger<MediaController> logger) : ControllerBase
 {
     private readonly MediaHouseDbContext _dbContext = dbContext;
     private readonly IMediaService _mediaService = mediaService;
+    private readonly IFavorService _favorService = favorService;
     private readonly ILogger<MediaController> _logger = logger;
 
     [HttpGet("file")]
@@ -98,6 +100,26 @@ public class MediaController(
         {
             _logger.LogError(ex, "Error serving image: {UrlName}", url_name);
             return StatusCode(500, new { error = "Failed to serve image" });
+        }
+    }
+
+    [HttpPost("{mediaId}/favor")]
+    public async Task<ActionResult> ToggleFavorite(int mediaId, [FromBody] FavorCreateDto dto)
+    {
+        try
+        {
+            var isFavorited = await _favorService.ToggleFavoriteAsync(mediaId, dto.UserId);
+
+            return Ok(new
+            {
+                IsFavorited = isFavorited,
+                Message = isFavorited ? "Added to favorites" : "Removed from favorites"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error toggling favorite for media {MediaId}", mediaId);
+            return StatusCode(500, new { error = "Failed to toggle favorite" });
         }
     }
 

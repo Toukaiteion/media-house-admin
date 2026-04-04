@@ -21,6 +21,7 @@ builder.Services.AddScoped<IMediaFileService, MediaFileService>();
 builder.Services.AddScoped<DatabaseService>();
 builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<IActorService, ActorService>();
+builder.Services.AddScoped<IFavorService, FavorService>();
 
 // Register repositories
 builder.Services.AddScoped<IMediaLibraryRepository, MediaLibraryRepository>();
