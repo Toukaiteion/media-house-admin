@@ -11,4 +11,5 @@ public class MovieDto
     public string? Overview { get; set; }
     public DateTime CreatedAt { get; set; }
     public string MediaLibraryId { get; set; } = string.Empty;
+    public int? PlayCount { get; set; }  // 播放次数
 }

@@ -117,14 +117,6 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
             .Property(m => m.Status)
             .HasConversion<string>();
 
-        modelBuilder.Entity<SystemSyncLog>()
-            .Property(s => s.SyncType)
-            .HasConversion<string>();
-
-        modelBuilder.Entity<SystemSyncLog>()
-            .Property(s => s.Status)
-            .HasConversion<string>();
-
         modelBuilder.Entity<PlayRecord>()
             .Property(p => p.MediaType)
             .HasConversion<string>();
@@ -145,16 +137,13 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
             .Property(mi => mi.Type)
             .HasConversion<string>();
 
+        // Media PlayCount default value
+        modelBuilder.Entity<Media>()
+            .Property(m => m.PlayCount)
+            .HasDefaultValue(0);
+
         modelBuilder.Entity<Staff>()
             .Property(s => s.Country)
-            .HasConversion<string>();
-
-        modelBuilder.Entity<SystemSyncLog>()
-            .Property(t => t.SyncType)
-            .HasConversion<string>();
-            
-        modelBuilder.Entity<SystemSyncLog>()
-            .Property(t => t.Status)
             .HasConversion<string>();
     }
 }

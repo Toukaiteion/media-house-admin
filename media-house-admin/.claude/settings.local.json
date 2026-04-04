@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "Bash(mv /mnt/g/project/MediaHouse/media-house-admin/media-house-admin/Controllers/MoviesController.cs /tmp/Movies_temp.cs)",
+      "Bash(mv /mnt/g/project/MediaHouse/media-house-admin/media-house-admin/Controllers/MoviesController.cs /tmp/movies_backup.cs)"
     ]
   }
 }

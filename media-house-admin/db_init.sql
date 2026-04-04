@@ -32,6 +32,7 @@ CREATE TABLE medias (
 	poster_path VARCHAR(255),            -- 海报
     thumb_path VARCHAR(255),             -- 缩略图
     fanart_path VARCHAR(255),            -- 粉丝图
+	play_count INTEGER,
 	
     create_time TIMESTAMP DEFAULT (datetime('now','localtime')),
     update_time TIMESTAMP DEFAULT (datetime('now','localtime'))

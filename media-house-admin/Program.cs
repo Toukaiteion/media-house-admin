@@ -29,6 +29,7 @@ builder.Services.AddScoped<IMovieRepository, MovieRepository>();
 builder.Services.AddScoped<IAppUserRepository, AppUserRepository>();
 builder.Services.AddScoped<IPlayRecordRepository, PlayRecordRepository>();
 builder.Services.AddScoped<IMediaService, MediaService>();
+builder.Services.AddScoped<IMovieService, MovieService>();
 
 // Add Quartz.NET
 builder.Services.AddQuartz(q =>

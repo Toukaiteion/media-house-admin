@@ -98,6 +98,7 @@ public class PlayRecordService(MediaHouseDbContext context, ILogger<PlayRecordSe
             .FirstOrDefaultAsync(p => p.MediaId == mediaId && p.UserId == userId);
 
         long positionMs = (long)(positionSeconds * 1000);
+        bool isNewPlay = playRecord == null;
 
         if (playRecord == null)
         {
@@ -127,6 +128,19 @@ public class PlayRecordService(MediaHouseDbContext context, ILogger<PlayRecordSe
         }
 
         await _context.SaveChangesAsync();
+
+        // Increment play count (only for new records or when starting from beginning)
+        if (isNewPlay || positionSeconds < 5)
+        {
+            var media = await _context.Medias.FindAsync(mediaId);
+            if (media != null)
+            {
+                media.PlayCount = (media.PlayCount ?? 0) + 1;
+                media.UpdateTime = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
+        }
+
         return playRecord;
     }
 }

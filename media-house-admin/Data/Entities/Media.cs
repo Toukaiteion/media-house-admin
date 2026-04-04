@@ -14,6 +14,7 @@ public class Media
     public string? PosterPath { get; set; }                   // 海报
     public string? ThumbPath { get; set; }                    // 缩略图
     public string? FanartPath { get; set; }                   // 粉丝图
+    public int? PlayCount { get; set; }                        // 播放次数
     public DateTime CreateTime { get; set; } = DateTime.UtcNow;
     public DateTime UpdateTime { get; set; } = DateTime.UtcNow;
 

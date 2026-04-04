@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MediaHouse.Data;
 using MediaHouse.DTOs;
+using MediaHouse.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace MediaHouse.Controllers;
@@ -8,37 +9,22 @@ namespace MediaHouse.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 public class MoviesController(
+    IMovieService movieService,
     MediaHouseDbContext dbContext,
     ILogger<MoviesController> logger) : ControllerBase
 {
+    private readonly IMovieService _movieService = movieService;
     private readonly MediaHouseDbContext _dbContext = dbContext;
     private readonly ILogger<MoviesController> _logger = logger;
 
     [HttpGet]
-    public async Task<ActionResult<List<MovieDto>>> GetMovies(
-        [FromQuery] string? libraryId = null,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+    public async Task<ActionResult<List<List<MovieDto>>>> GetMovies([FromQuery] MovieQueryDto query)
     {
         try
         {
-            var query = _dbContext.Medias
-                .Include(m => m.Movie)
-                .Where(m => m.Type == "movie");
-
-            if (!string.IsNullOrEmpty(libraryId) && int.TryParse(libraryId, out var libId))
-            {
-                query = query.Where(m => m.LibraryId == libId);
-            }
-
-            var medias = await query
-                .OrderBy(m => m.Id)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var dtos = medias.Select(MapToDto).ToList();
-            return Ok(dtos);
+            var (movies, totalCount) = await _movieService.GetMoviesAsync(query);
+            Response.Headers.Append("X-Total-Count", totalCount.ToString());
+            return Ok(movies);
         }
         catch (Exception ex)
         {
@@ -76,26 +62,25 @@ public class MoviesController(
         }
     }
 
-    private static MovieDto MapToDto(Data.Entities.Media media)
+    [HttpDelete("{id}")]
+    public async Task<ActionResult> DeleteMovie(int id)
     {
-        int? year = null;
-        if (!string.IsNullOrEmpty(media.ReleaseDate) && DateTime.TryParse(media.ReleaseDate, out var releaseDate))
+        try
         {
-            year = releaseDate.Year;
-        }
+            var success = await _movieService.DeleteMovieAsync(id);
 
-        return new MovieDto
+            if (!success)
+            {
+                return NotFound(new { error = "Movie not found" });
+            }
+
+            return Ok(new { message = "Movie deleted successfully" });
+        }
+        catch (Exception ex)
         {
-            Id = media.Id.ToString(),
-            Title = media.Title,
-            Year = year,
-            PosterPath = media.PosterPath,
-            ThumbPath = media.ThumbPath,
-            FanartPath = media.FanartPath,
-            Overview = media.Summary ?? media.Movie?.Description,
-            CreatedAt = media.CreateTime,
-            MediaLibraryId = media.LibraryId.ToString()
-        };
+            _logger.LogError(ex, "Error deleting movie {MovieId}", id);
+            return StatusCode(500, new { error = "Failed to delete movie" });
+        }
     }
 
     private static MovieDetailDto MapToDetailDto(Data.Entities.Media media)
