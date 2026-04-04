@@ -19,6 +19,8 @@ builder.Services.AddScoped<IConsistencyService, ConsistencyService>();
 builder.Services.AddScoped<IPlayRecordService, PlayRecordService>();
 builder.Services.AddScoped<IMediaFileService, MediaFileService>();
 builder.Services.AddScoped<DatabaseService>();
+builder.Services.AddScoped<ITagService, TagService>();
+builder.Services.AddScoped<IActorService, ActorService>();
 
 // Register repositories
 builder.Services.AddScoped<IMediaLibraryRepository, MediaLibraryRepository>();
