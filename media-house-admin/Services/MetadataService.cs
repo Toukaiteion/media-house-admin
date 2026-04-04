@@ -19,6 +19,19 @@ public record NfoParseResult(
     string? Maker
 );
 
+public record NfoUpdateData(
+    string? Title,
+    string? Num,
+    string? Summary,
+    List<string>? Tags,
+    List<ActorData>? Actors
+);
+
+public record ActorData(
+    string Name,
+    string? RoleName
+);
+
 public class MetadataService(ILogger<MetadataService> logger) : IMetadataService
 {
     private readonly ILogger<MetadataService> _logger = logger;
@@ -131,5 +144,116 @@ public class MetadataService(ILogger<MetadataService> logger) : IMetadataService
     {
         // TODO: Implement image extraction from media file
         return null;
+    }
+
+    public async Task<bool> WriteNfoFileAsync(string filePath, NfoUpdateData data)
+    {
+        try
+        {
+            XDocument doc;
+            XElement root;
+
+            if (File.Exists(filePath))
+            {
+                // Load existing NFO file
+                var xml = await File.ReadAllTextAsync(filePath);
+                doc = XDocument.Parse(xml);
+                root = doc.Root;
+                if (root == null) root = new XElement("movie");
+            }
+            else
+            {
+                // Create new NFO document
+                root = new XElement("movie");
+                doc = new XDocument(root);
+            }
+
+            // Update title
+            if (data.Title != null)
+            {
+                var titleElement = root.Element("title");
+                if (titleElement == null)
+                {
+                    root.Add(new XElement("title", data.Title));
+                }
+                else
+                {
+                    titleElement.Value = data.Title;
+                }
+            }
+
+            // Update num
+            if (data.Num != null)
+            {
+                var numElement = root.Element("num");
+                if (numElement == null)
+                {
+                    root.Add(new XElement("num", data.Num));
+                }
+                else
+                {
+                    numElement.Value = data.Num;
+                }
+            }
+
+            // Update plot (summary)
+            if (data.Summary != null)
+            {
+                var plotElement = root.Element("plot");
+                if (plotElement == null)
+                {
+                    root.Add(new XElement("plot", data.Summary));
+                }
+                else
+                {
+                    plotElement.Value = data.Summary;
+                }
+            }
+
+            // Update tags - remove all existing tags first, then add new ones
+            root.Elements("tag").Remove();
+            if (data.Tags != null && data.Tags.Count > 0)
+            {
+                foreach (var tag in data.Tags)
+                {
+                    root.Add(new XElement("tag", tag));
+                }
+            }
+
+            // Update actors - remove all existing actors first, then add new ones
+            root.Elements("actor").Remove();
+            if (data.Actors != null && data.Actors.Count > 0)
+            {
+                foreach (var actor in data.Actors)
+                {
+                    var actorElement = new XElement("actor",
+                        new XElement("name", actor.Name));
+
+                    if (actor.RoleName != null)
+                    {
+                        actorElement.Add(new XElement("role", actor.RoleName));
+                    }
+
+                    root.Add(actorElement);
+                }
+            }
+
+            // Write back to file
+            var directory = Path.GetDirectoryName(filePath);
+            if (directory != null && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            var xmlContent = doc.ToString();
+            await File.WriteAllTextAsync(filePath, xmlContent);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to write NFO file: {FilePath}", filePath);
+            return false;
+        }
     }
 }
