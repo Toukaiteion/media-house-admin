@@ -12,11 +12,13 @@ public class MediaController(
     MediaHouseDbContext dbContext,
     IMediaService mediaService,
     IFavorService favorService,
+    IPlayRecordService playRecordService,
     ILogger<MediaController> logger) : ControllerBase
 {
     private readonly MediaHouseDbContext _dbContext = dbContext;
     private readonly IMediaService _mediaService = mediaService;
     private readonly IFavorService _favorService = favorService;
+    private readonly IPlayRecordService _playRecordService = playRecordService;
     private readonly ILogger<MediaController> _logger = logger;
 
     [HttpGet("file")]
@@ -100,6 +102,62 @@ public class MediaController(
         {
             _logger.LogError(ex, "Error serving image: {UrlName}", url_name);
             return StatusCode(500, new { error = "Failed to serve image" });
+        }
+    }
+
+    [HttpPost("{mediaId}/play")]
+    public async Task<IActionResult> Play(int mediaId, [FromBody] PlayRequestDto dto)
+    {
+        try
+        {
+            // Parameter validation
+            if (mediaId <= 0)
+            {
+                return BadRequest(new { error = "Invalid media ID" });
+            }
+
+            if (dto == null)
+            {
+                return BadRequest(new { error = "Invalid request body" });
+            }
+
+            // Get media info with file path
+            var media = await _dbContext.Medias
+                .Include(m => m.MediaFiles)
+                .FirstOrDefaultAsync(m => m.Id == mediaId);
+
+            if (media == null)
+            {
+                return NotFound(new { error = "Media not found" });
+            }
+
+            // Get file path from MediaFiles
+            string? filePath = null;
+            if (media.MediaFiles.Any())
+            {
+                filePath = media.MediaFiles.First().Path;
+            }
+
+            if (string.IsNullOrEmpty(filePath) || !System.IO.File.Exists(filePath))
+            {
+                return NotFound(new { error = "Media file not found" });
+            }
+
+            // Create/update play record
+            var positionSeconds = dto.PositionSeconds ?? 0;
+            await _playRecordService.CreateOrUpdatePlayRecordAsync(mediaId, dto.UserId, positionSeconds);
+
+            // Get content type and return file stream
+            var fileInfo = new System.IO.FileInfo(filePath);
+            var contentType = GetContentType(fileInfo.Extension);
+            var fileStream = new System.IO.FileStream(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read);
+
+            return File(fileStream, contentType, enableRangeProcessing: true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error playing media {MediaId}", mediaId);
+            return StatusCode(500, new { error = "Failed to play media" });
         }
     }
 

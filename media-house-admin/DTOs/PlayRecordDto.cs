@@ -33,3 +33,9 @@ public class PlayRecordCreateDto
     public int UserId { get; set; }
     public double PositionSeconds { get; set; }  // 播放进度（秒）
 }
+
+public class PlayRequestDto
+{
+    public int UserId { get; set; }
+    public double? PositionSeconds { get; set; }  // 可选：从指定位置开始播放
+}
