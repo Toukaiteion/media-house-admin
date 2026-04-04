@@ -6,7 +6,7 @@ using MediaHouse.Data.Entities;
 namespace MediaHouse.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/playrecord")]
 public class PlayRecordController : ControllerBase
 {
     private readonly IPlayRecordService _playRecordService;
@@ -37,6 +37,41 @@ public class PlayRecordController : ControllerBase
         {
             _logger.LogError(ex, "Error getting playback URL for media {MediaId}", mediaId);
             return StatusCode(500, new { error = "Failed to get playback URL" });
+        }
+    }
+
+    [HttpGet("{mediaId}")]
+    public async Task<ActionResult<PlayRecordDto>> GetPlayRecord(int mediaId, [FromQuery] int userId)
+    {
+        try
+        {
+            var playRecord = await _playRecordService.GetPlayRecordAsync(mediaId, userId);
+            if (playRecord == null)
+            {
+                return NotFound(new { error = "Play record not found" });
+            }
+
+            return Ok(MapToDto(playRecord));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting play record for media {MediaId}", mediaId);
+            return StatusCode(500, new { error = "Failed to get play record" });
+        }
+    }
+
+    [HttpPost("{mediaId}")]
+    public async Task<ActionResult<PlayRecordDto>> CreateOrUpdatePlayRecord(int mediaId, [FromBody] PlayRecordCreateDto dto)
+    {
+        try
+        {
+            var playRecord = await _playRecordService.CreateOrUpdatePlayRecordAsync(mediaId, dto.UserId, dto.PositionSeconds);
+            return Ok(MapToDto(playRecord));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating play record for media {MediaId}", mediaId);
+            return StatusCode(500, new { error = "Failed to create play record" });
         }
     }
 

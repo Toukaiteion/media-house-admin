@@ -1,15 +1,19 @@
 using Microsoft.AspNetCore.Mvc;
+using MediaHouse.Data;
 using MediaHouse.DTOs;
 using MediaHouse.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace MediaHouse.Controllers;
 
 [ApiController]
 [Route("api/media")]
 public class MediaController(
+    MediaHouseDbContext dbContext,
     IMediaService mediaService,
     ILogger<MediaController> logger) : ControllerBase
 {
+    private readonly MediaHouseDbContext _dbContext = dbContext;
     private readonly IMediaService _mediaService = mediaService;
     private readonly ILogger<MediaController> _logger = logger;
 
@@ -59,6 +63,42 @@ public class MediaController(
         }
 
         return Ok(new { message = "Metadata updated successfully" });
+    }
+
+    [HttpGet("image/{url_name}")]
+    public async Task<IActionResult> GetImageByUrlName(string url_name)
+    {
+        try
+        {
+            // Parameter validation
+            if (string.IsNullOrEmpty(url_name))
+            {
+                return BadRequest(new { error = "Invalid url name" });
+            }
+
+            // Find MediaImg by url_name from database
+            var mediaImg = await _dbContext.MediaImgs
+                .FirstOrDefaultAsync(mi => mi.UrlName == url_name);
+
+            if (mediaImg == null)
+            {
+                return NotFound(new { error = "Image not found" });
+            }
+
+            if (!System.IO.File.Exists(mediaImg.Path))
+            {
+                return NotFound(new { error = "Image file not found" });
+            }
+
+            var contentType = GetContentType(mediaImg.Extension ?? "");
+            var fileStream = new System.IO.FileStream(mediaImg.Path, System.IO.FileMode.Open, System.IO.FileAccess.Read);
+            return File(fileStream, contentType, enableRangeProcessing: true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error serving image: {UrlName}", url_name);
+            return StatusCode(500, new { error = "Failed to serve image" });
+        }
     }
 
     private static string GetContentType(string extension)

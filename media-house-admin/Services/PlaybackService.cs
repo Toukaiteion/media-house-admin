@@ -85,4 +85,48 @@ public class PlayRecordService(MediaHouseDbContext context, ILogger<PlayRecordSe
             await _context.SaveChangesAsync();
         }
     }
+
+    public async Task<PlayRecord?> GetPlayRecordAsync(int mediaId, int userId)
+    {
+        return await _context.PlayRecords
+            .FirstOrDefaultAsync(p => p.MediaId == mediaId && p.UserId == userId);
+    }
+
+    public async Task<PlayRecord> CreateOrUpdatePlayRecordAsync(int mediaId, int userId, double positionSeconds)
+    {
+        var playRecord = await _context.PlayRecords
+            .FirstOrDefaultAsync(p => p.MediaId == mediaId && p.UserId == userId);
+
+        long positionMs = (long)(positionSeconds * 1000);
+
+        if (playRecord == null)
+        {
+            // Get media type and library id
+            var media = await _context.Medias
+                .FirstOrDefaultAsync(m => m.Id == mediaId);
+
+            if (media == null)
+                throw new Exception("Media not found");
+
+            playRecord = new PlayRecord
+            {
+                UserId = userId,
+                LibId = media.LibraryId,
+                MediaType = media.Type,
+                MediaId = mediaId,
+                PositionMs = positionMs,
+                LastPlayTime = DateTime.UtcNow
+            };
+            _context.PlayRecords.Add(playRecord);
+        }
+        else
+        {
+            playRecord.PositionMs = positionMs;
+            playRecord.LastPlayTime = DateTime.UtcNow;
+            playRecord.UpdateTime = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
+        return playRecord;
+    }
 }

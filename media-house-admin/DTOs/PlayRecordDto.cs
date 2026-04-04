@@ -27,3 +27,9 @@ public class UpdatePlayRecordDto
     public int MediaId { get; set; }
     public double PositionSeconds { get; set; }
 }
+
+public class PlayRecordCreateDto
+{
+    public int UserId { get; set; }
+    public double PositionSeconds { get; set; }  // 播放进度（秒）
+}
