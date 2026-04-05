@@ -105,8 +105,8 @@ public class MediaController(
         }
     }
 
-    [HttpPost("{mediaId}/play")]
-    public async Task<IActionResult> Play(int mediaId, [FromBody] PlayRequestDto dto)
+    [HttpGet("{mediaId}/stream")]
+    public async Task<IActionResult> Play(int mediaId)
     {
         try
         {
@@ -114,11 +114,6 @@ public class MediaController(
             if (mediaId <= 0)
             {
                 return BadRequest(new { error = "Invalid media ID" });
-            }
-
-            if (dto == null)
-            {
-                return BadRequest(new { error = "Invalid request body" });
             }
 
             // Get media info with file path
@@ -142,10 +137,6 @@ public class MediaController(
             {
                 return NotFound(new { error = "Media file not found" });
             }
-
-            // Create/update play record
-            var positionSeconds = dto.PositionSeconds ?? 0;
-            await _playRecordService.CreateOrUpdatePlayRecordAsync(mediaId, dto.UserId, positionSeconds);
 
             // Get content type and return file stream
             var fileInfo = new System.IO.FileInfo(filePath);
