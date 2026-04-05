@@ -64,7 +64,7 @@ public class MediaHouseDbContext(DbContextOptions<MediaHouseDbContext> options) 
 
         modelBuilder.Entity<AppUser>()
             .HasMany(u => u.PlayRecords)
-            .WithOne()
+            .WithOne(p => p.User)
             .HasForeignKey(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
