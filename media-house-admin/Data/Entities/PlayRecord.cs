@@ -4,7 +4,7 @@ public class PlayRecord
 {
     public int Id { get; set; }
     public int UserId { get; set; }
-    public int LibId { get; set; }
+    public int LibraryId { get; set; }
     public string MediaType { get; set; } = string.Empty;
     public int MediaId { get; set; }                           // media id
     public long PositionMs { get; set; } = 0;                   // 播放进度（毫秒）

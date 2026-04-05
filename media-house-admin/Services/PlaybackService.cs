@@ -33,7 +33,7 @@ public class PlayRecordService(MediaHouseDbContext context, ILogger<PlayRecordSe
         return await _context.PlayRecords
             .FirstOrDefaultAsync(p =>
                 p.UserId == userId &&
-                p.LibId == mediaLibraryId &&
+                p.LibraryId == mediaLibraryId &&
                 p.MediaId == mediaId);
     }
 
@@ -42,7 +42,7 @@ public class PlayRecordService(MediaHouseDbContext context, ILogger<PlayRecordSe
         var progress = await _context.PlayRecords
             .FirstOrDefaultAsync(p =>
                 p.UserId == userId &&
-                p.LibId == mediaLibraryId &&
+                p.LibraryId == mediaLibraryId &&
                 p.MediaId == mediaId);
 
         long positionMs = (long)(positionSeconds * 1000);
@@ -52,7 +52,7 @@ public class PlayRecordService(MediaHouseDbContext context, ILogger<PlayRecordSe
             progress = new PlayRecord
             {
                 UserId = userId,
-                LibId = mediaLibraryId,
+                LibraryId = mediaLibraryId,
                 MediaId = mediaId,
                 PositionMs = positionMs,
                 LastPlayTime = DateTime.UtcNow
@@ -74,7 +74,7 @@ public class PlayRecordService(MediaHouseDbContext context, ILogger<PlayRecordSe
         var progress = await _context.PlayRecords
             .FirstOrDefaultAsync(p =>
                 p.UserId == userId &&
-                p.LibId == mediaLibraryId &&
+                p.LibraryId == mediaLibraryId &&
                 p.MediaId == mediaId);
 
         if (progress != null)
@@ -112,7 +112,7 @@ public class PlayRecordService(MediaHouseDbContext context, ILogger<PlayRecordSe
             playRecord = new PlayRecord
             {
                 UserId = userId,
-                LibId = media.LibraryId,
+                LibraryId = media.LibraryId,
                 MediaType = media.Type,
                 MediaId = mediaId,
                 PositionMs = positionMs,

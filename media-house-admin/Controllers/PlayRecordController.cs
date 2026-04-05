@@ -120,7 +120,7 @@ public class PlayRecordController : ControllerBase
         {
             Id = progress.Id,
             UserId = progress.UserId,
-            MediaLibraryId = progress.LibId,
+            MediaLibraryId = progress.LibraryId,
             MediaId = progress.MediaId,
             PositionMs = progress.PositionMs,
             IsFinished = progress.IsFinished,

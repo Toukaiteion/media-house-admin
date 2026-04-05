@@ -151,8 +151,8 @@ CREATE TABLE my_favor (
 -- ==============================
 -- 10. 播放记录
 -- ==============================
-DROP TABLE IF EXISTS play_record;
-CREATE TABLE play_record (
+DROP TABLE IF EXISTS play_records;
+CREATE TABLE play_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
 	library_id INTEGER NOT NULL,
